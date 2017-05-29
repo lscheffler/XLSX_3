@@ -76,6 +76,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getcellwordwrap		&& Returns the cell word wrap setting
 		*m: getcellxfsid		&& Returns the Cell XfsId value
 		*m: getcellxfsrecord		&& Positions the record pointer to xl_cellxfs record; returns true if found, or false if not found
+		*m: getchecksum		&& Returns the checksum the string
 		*m: getchildnodecount		&& Returns the number of child nodes
 		*m: getchildnodeelement		&& Returns the selected child node
 		*m: getcolumnincolrowpair		&& Returns the column (Ascii value) in a ColRow pair; i.e., returns A from A6 reference
@@ -117,6 +118,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getworkbooksheets		&& Returns the workbook sheets
 		*m: getxmlheaderfootertext		&& Returns a XML formatted string for the header and footer text
 		*m: getxmlstring		&& Gets the string as an XML formatted string
+		*m: initalizeidvalues		&& Initializes the internal Id values
+		*m: insertcell		&& Inserts a new cell into the sheet
+		*m: insertcolumn		&& Inserts a new column into the sheet
+		*m: insertrow		&& Inserts a new row into the sheet
 		*m: iscellformula		&& Returns True if cell contains a formula
 		*m: iscellreferenceinvalid		&& Checks if the cell reference is invalid (outside of limits)
 		*m: isvalidborderstyle		&& Validates the border style value
@@ -137,7 +142,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: renamesheet		&& Renames the selected sheet
 		*m: resetcolumnwidth		&& Resets the column width to default
 		*m: savegridtoworkbook		&& Saves the selected grid to a workbook
+		*m: savegridtoworkbookex		&& Saves the passed grid to a workbook without adding the content to the internal cursors
 		*m: savetabletoworkbook		&& Saves the table passed (alias) as a workbook sheet
+		*m: savetabletoworkbookex		&& Creates a new workbook from a table; direct write to XLSX file without loading internal cursors
 		*m: saveworkbook		&& Saves the selected workbook as an XLSX file
 		*m: saveworkbookas		&& Saves the selected workbook with the new name
 		*m: setcellalignment		&& Sets the cell horizontal and vertical alignments
@@ -185,6 +192,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: ttoc3		&& Equlivalent of TTOC() function for pre VFP9 support
 		*m: unfreezepanes		&& Removes the pane freeze from the sheet
 		*m: unmergedcells		&& Unmerges merged cells
+		*m: writedirectcellvalue		&& Writes the cell value directly to the sheets xml
+		*m: writedirectxmls		&& Writes the workbook XMLs for direct table/grid to workbook output
 		*m: writerelationshipsxml		&& Writes the relationships xml file
 		*m: writesheetxmls		&& Writes the Sheet XML files
 		*m: writestringsxml		&& Writes the sharedStrings XML
@@ -231,7 +240,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultfont = Calibri		&& Workbook Default Font
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 22		&& Release version of Class ***Integer
+	excelxlsxrelease = 23		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -244,7 +253,16 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	Width = 129
 	_memberdata = <VFPData>
 		<memberdata name="cellrefasciitoindex" type="method" display="CellRefAsciiToIndex"/>
+		<memberdata name="getchecksum" type="method" display="GetCheckSum"/>
 		<memberdata name="getstringrecord" type="method" display="GetStringRecord"/>
+		<memberdata name="initalizeidvalues" type="method" display="InitalizeIdValues"/>
+		<memberdata name="insertcell" type="method" display="InsertCell"/>
+		<memberdata name="insertcolumn" type="method" display="InsertColumn"/>
+		<memberdata name="insertrow" type="method" display="InsertRow"/>
+		<memberdata name="savegridtoworkbookex" type="method" display="SaveGridToWorkbookEx"/>
+		<memberdata name="savetabletoworkbookex" type="method" display="SaveTableToWorkbookEx"/>
+		<memberdata name="writedirectcellvalue" type="method" display="WriteDirectCellValue"/>
+		<memberdata name="writedirectxmls" type="method" display="WriteDirectXMLs"/>
 		</VFPData>		&& XML Metadata for customizable properties
 	
 	PROTECTED PROCEDURE AddClassDefinedNumericFormats		&& Adds pre-defined numeric cell formats
@@ -596,12 +614,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROTECTED PROCEDURE AddStringValue		&& Adds a string value to the internal cursor
 		LPARAMETERS tnWB, tcString, tlInLine
-		LOCAL lcStringXml, lnStringId, llPresrvSp
+		LOCAL lcStringXml, lnStringId, llPresrvSp, lcCheckSum
 		IF tlInLine
 			llPresrvSp  = IIF(LEFT(tcString, 1) = " ", True, False)
 			lcStringXml = this.GetXMLString(tcString)
 			lnStringId  = this.GetNextId(tnWB, "xl_strings")
-			INSERT INTO xl_strings (id, workbook, stringxml, stringval, presvspace, formatted) VALUES (lnStringId, tnWB, lcStringXml, tcString, llPresrvSp, True)
+			lcCheckSum  = this.GetCheckSum(tcString)
+			INSERT INTO xl_strings (id, workbook, checksum, stringxml, stringval, presvspace, formatted) ;
+				VALUES (lnStringId, tnWB, lcCheckSum, lcStringXml, tcString, llPresrvSp, True)
 		ELSE
 			IF this.GetStringRecord(tnWB, tcString) .AND. xl_strings.formatted = False
 				lnStringId = xl_strings.id
@@ -609,7 +629,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				llPresrvSp  = IIF(LEFT(tcString, 1) = " " .OR. RIGHT(tcString, 1) = " ", True, False)
 				lcStringXml = this.GetXMLString(tcString)
 				lnStringId  = this.GetNextId(tnWB, "xl_strings")
-				INSERT INTO xl_strings (id, workbook, stringxml, stringval, presvspace, formatted) VALUES (lnStringId, tnWB, lcStringXml, tcString, llPresrvSp, False)
+				lcCheckSum  = this.GetCheckSum(tcString)
+				INSERT INTO xl_strings (id, workbook, checksum, stringxml, stringval, presvspace, formatted) ;
+					VALUES (lnStringId, tnWB, lcCheckSum, lcStringXml, tcString, llPresrvSp, False)
 			ENDIF
 		ENDIF
 		RETURN lnStringId
@@ -1060,96 +1082,95 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROTECTED PROCEDURE CreateExcelFile		&& Creates the Excel file from the components
-		LPARAMETERS tnWB, tcTempPath
+		LPARAMETERS tcTempPath, tcFilePath, tcWBName
 		LOCAL loShell, loFolder, lcZipFile, loException, loFile, lnCountBefore, lcFile, lcZipPath, lnCount, lhFile
-		IF SEEK(BINTOC(tnWB), "xl_workbooks", "workbook")
-			lcZipPath = ALLTRIM(xl_workbooks.filepath)
-			IF EMPTY(lcZipPath)
-				lcZipPath = SYS(5) + SYS(2003)
-			ENDIF
-			lcZipFile = ADDBS(lcZipPath) + FORCEEXT(ALLTRIM(xl_workbooks.wbname), "zip")
+		lcZipPath = ALLTRIM(tcFilePath)
+		IF EMPTY(lcZipPath)
+			lcZipPath = SYS(5) + SYS(2003)
+		ENDIF
+		lcZipFile = ADDBS(lcZipPath) + FORCEEXT(ALLTRIM(tcWBName), "zip")
 		*-*	Delete any prior file with same Excel name
-			IF FILE(FORCEEXT(lcZipFile, "xlsx"))
-				TRY
-					ERASE (FORCEEXT(lcZipFile, "xlsx"))
-					llError = False
-				CATCH TO loException
-					this.ErrorLevelId = 10
-					RAISEEVENT(this, "OnShowErrorMessage", 10, "Error - unable to delete existing file" + CR + loException.Message)
-					llError = True
-				ENDTRY
-				IF llError
-					RETURN False
-				ENDIF
-			ENDIF
-		*-*	Validate that the file name and path are valid
+		IF FILE(FORCEEXT(lcZipFile, "xlsx"))
 			TRY
-				lhFile = FCREATE(lcZipFile, 0)
-				FCLOSE(lhFile)
+				ERASE (FORCEEXT(lcZipFile, "xlsx"))
+				llError = False
 		
 			CATCH TO loException
-				this.ErrorLevelId = 11
-				RAISEEVENT(this, "OnShowErrorMessage", 11, "CreateExcelFile - Failed to create Zip file"+ CR + loException.Message)
-				RETURN
+				this.ErrorLevelId = 10
+				RAISEEVENT(this, "OnShowErrorMessage", 10, "Error - unable to delete existing file" + CR + loException.Message)
+				llError = True
 			ENDTRY
+			IF llError
+				RETURN False
+			ENDIF
+		ENDIF
+		*-*	Validate that the file name and path are valid
+		TRY
+			lhFile = FCREATE(lcZipFile, 0)
+			FCLOSE(lhFile)
+		
+		CATCH TO loException
+			this.ErrorLevelId = 11
+			RAISEEVENT(this, "OnShowErrorMessage", 11, "CreateExcelFile - Failed to create Zip file"+ CR + loException.Message)
+			RETURN
+		ENDTRY
 		
 		*-*	Create base zip file
-			STRTOFILE(CHR(80)+CHR(75)+CHR(5)+CHR(6)+REPLICATE(CHR(0), 18), lcZipFile, 0)
-			loShell  = CREATEOBJECT("shell.application")
-			loFolder = loShell.NameSpace(tcTempPath).Items
+		STRTOFILE(CHR(80)+CHR(75)+CHR(5)+CHR(6)+REPLICATE(CHR(0), 18), lcZipFile, 0)
+		loShell  = CREATEOBJECT("shell.application")
+		loFolder = loShell.NameSpace(tcTempPath).Items
 		
 		*-*	Add the files to the zip
-			IF OS(3)<'6' .OR. OS(3)='6' .AND. OS(4)<'1'
-				TRY
-					FOR EACH loFile IN loFolder
-						loShell.NameSpace(lcZipFile).MoveHere(loFile, FOF_SILENT)
-						apiSleep(100)
-					ENDFOR
+		IF OS(3)<'6' .OR. OS(3)='6' .AND. OS(4)<'1'
+			TRY
+				FOR EACH loFile IN loFolder
+					loShell.NameSpace(lcZipFile).MoveHere(loFile, FOF_SILENT)
+					apiSleep(100)
+				ENDFOR
 		
-				CATCH TO loException
-					SET STEP ON
-				ENDTRY
-			
-				llErr = True
-				DO WHILE llErr
-					TRY
-						apiMoveFile(lcZipFile, FORCEEXT(lcZipFile, "xlsx"))
-						llErr = False
-					CATCH
-						apiSleep(100)
-					ENDTRY
-				ENDDO
-			ELSE
-				TRY
-					FOR EACH loFile IN loFolder
-						lnCountBefore = loShell.NameSpace(tcTempPath).Items.Count
-						loShell.NameSpace(lcZipFile).MoveHere(loFile, FOF_SILENT)
-						DO WHILE lnCountBefore = loShell.NameSpace(tcTempPath).Items.Count
-							apiSleep(50)
-						ENDDO
-					ENDFOR
+			CATCH TO loException
+				SET STEP ON
+			ENDTRY
 		
-				CATCH TO loException
-					this.ErrorLevelId = 12
-					RAISEEVENT(this, "OnShowErrorMessage", 12, "CreateExcelFile - Failed to add contents to Zip file"+ CR + loException.Message)
-					SET STEP ON
-					ERASE (lcZipFile)
-					DO CASE
-						CASE loException.ErrorNo = 1943
-						
-						OTHERWISE
-							SET STEP ON
-					ENDCASE
-				ENDTRY
+			llErr = True
+			DO WHILE llErr
 				TRY
 					apiMoveFile(lcZipFile, FORCEEXT(lcZipFile, "xlsx"))
-		
-				CATCH TO loException
-					this.ErrorLevelId = 13
-					RAISEEVENT(this, "OnShowErrorMessage", 13, "CreateExcelFile - Rename failed"+ CR + loException.Message)
-					SET STEP ON
+					llErr = False
+				CATCH
+					apiSleep(100)
 				ENDTRY
-			ENDIF
+			ENDDO
+		ELSE
+			TRY
+				FOR EACH loFile IN loFolder
+					lnCountBefore = loShell.NameSpace(tcTempPath).Items.Count
+					loShell.NameSpace(lcZipFile).MoveHere(loFile, FOF_SILENT)
+					DO WHILE lnCountBefore = loShell.NameSpace(tcTempPath).Items.Count
+						apiSleep(50)
+					ENDDO
+				ENDFOR
+		
+			CATCH TO loException
+				this.ErrorLevelId = 12
+				RAISEEVENT(this, "OnShowErrorMessage", 12, "CreateExcelFile - Failed to add contents to Zip file"+ CR + loException.Message)
+				SET STEP ON
+				ERASE (lcZipFile)
+				DO CASE
+					CASE loException.ErrorNo = 1943
+					
+					OTHERWISE
+						SET STEP ON
+				ENDCASE
+			ENDTRY
+			TRY
+				apiMoveFile(lcZipFile, FORCEEXT(lcZipFile, "xlsx"))
+		
+			CATCH TO loException
+				this.ErrorLevelId = 13
+				RAISEEVENT(this, "OnShowErrorMessage", 13, "CreateExcelFile - Rename failed"+ CR + loException.Message)
+				SET STEP ON
+			ENDTRY
 		ENDIF
 	ENDPROC
 
@@ -1239,71 +1260,71 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 		DO CASE
 			CASE this.CodePage = 620            && Mazovia (Polish) MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 620 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 620 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 737            && Greek MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 737 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 737 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 852            && Eastern European MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 852 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 852 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 857            && Turkish MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 857 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 857 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 861            && Icelandic MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 861 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 861 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 865            && Nordic MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 865 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 865 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 866            && Russian MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 866 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 866 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 874            && Thai Windows
-				CREATE CURSOR xl_strings CODEPAGE = 874 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 874 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 895            && Kamenicky (Czech) MS-DOS
-				CREATE CURSOR xl_strings CODEPAGE = 895 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 895 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 932            && Japanese Windows
-				CREATE CURSOR xl_strings CODEPAGE = 932 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 932 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 936            && Chinese Simplified (PRC, Singapore) Windows
-				CREATE CURSOR xl_strings CODEPAGE = 936 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 936 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 949            &&Korean Windows
-				CREATE CURSOR xl_strings CODEPAGE = 949 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 949 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 950            && Traditional Chinese (Hong Kong SAR, Taiwan) Windows
-				CREATE CURSOR xl_strings CODEPAGE = 950 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 950 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 1250           && Eastern European Windows
-				CREATE CURSOR xl_strings CODEPAGE = 1250 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 1250 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 1251           && Russian Windows
-				CREATE CURSOR xl_strings CODEPAGE = 1251 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 1251 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 1252           && Windows ANSI
-				CREATE CURSOR xl_strings CODEPAGE = 1252 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 1252 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 1253           && Greek Windows
-				CREATE CURSOR xl_strings CODEPAGE = 1253 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 1253 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 1254           && Turkish Windows
-				CREATE CURSOR xl_strings CODEPAGE = 1254 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 1254 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 1255           && Hebrew Windows
-				CREATE CURSOR xl_strings CODEPAGE = 1255 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 1255 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			CASE this.CodePage = 1256           && Arabic Windows
-				CREATE CURSOR xl_strings CODEPAGE = 1256 (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings CODEPAGE = 1256 (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		
 			OTHERWISE
-				CREATE CURSOR xl_strings (id I, workbook I, stringxml M, stringval M, presvspace L, formatted L)
+				CREATE CURSOR xl_strings (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		ENDCASE
 		INDEX ON BINTOC(workbook)+BINTOC(id) TAG id FOR !DELETED()
 		INDEX ON BINTOC(workbook)+PADL(id, 10, '0') TAG sortorder FOR !DELETED()
-		INDEX ON BINTOC(workbook)+PADR(LEFT(UPPER(ALLTRIM(stringval)), 120), 120, "X") TAG stringndx
+		INDEX ON BINTOC(workbook)+checksum TAG stringndx
 		INDEX ON workbook TAG workbook
 		
 		CREATE CURSOR xl_strformat (workbook I, id I, index I, stringxml M, stringval M, fbold L, fitalic L, fcolor I, fname C(100), fsize N(5,1), uline C(16), strkthr L, ;
@@ -1313,8 +1334,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		CREATE CURSOR xl_workbooks (workbook I AUTOINC NEXTVALUE 1, wbname C(200), filepath C(200), fullname C(240))
 		INDEX ON BINTOC(workbook) TAG workbook
-		INDEX ON UPPER(ALLTRIM(wbname)) TAG wbname
 		INDEX ON UPPER(fullname) TAG fullname
+		INDEX ON PADR(UPPER(ALLTRIM(wbname)), 200, "_") TAG wbname
 		
 		CREATE CURSOR xl_sheets (workbook I, sheet I, shname C(30), state I, mleft N(6,3), mright N(6,3), mtop N(6,3), mbot N(6,3), mheader N(6,3), ;
 								mfooter N(6,3), shdeleted L, xsplit I, ysplit I, prnorient I, papersize I, paperwidth I, paperheight I, ;
@@ -1329,6 +1350,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		INDEX ON cellrow TAG cellrow
 		INDEX ON cellcol TAG cellcol
 		INDEX ON workbook TAG workbook
+		INDEX ON BINTOC(workbook)+BINTOC(sheet)+BINTOC(cellrow)+BINTOC(cellcol) TAG reverse DESCENDING
 		INDEX ON BINTOC(workbook)+BINTOC(sheet)+BINTOC(cellrow)+BINTOC(cellcol) TAG cellindex CANDIDATE
 		
 		CREATE CURSOR xl_cellxfs (workbook I, id I, numFmtId I, fontId I, fillId I, borderId I, halign C(8), valign C(8), indent I, wraptext I, rotation I)
@@ -1414,6 +1436,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		CREATE CURSOR xl_relationships (workbook I, sheet I, relid I, reltype C(20), target C(240))
 		INDEX ON BINTOC(workbook)+BINTOC(relid) TAG relid FOR !DELETED()
+		INDEX ON BINTOC(workbook)+BINTOC(sheet) TAG sheet FOR !DELETED()
 		
 		CREATE CURSOR xl_extsheets (workbook I, extid I, relid I, sheetname C(30))
 		INDEX ON BINTOC(workbook)+BINTOC(extid) TAG extid FOR !DELETED()
@@ -1726,6 +1749,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROTECTED PROCEDURE DeclareDLL		&& Declares the required support Win32 API
 		DECLARE Sleep IN kernel32 AS apiSleep INTEGER tnTime
+		DECLARE INTEGER DeleteFile IN kernel32 AS apiDeleteFile STRING lpFileName
+		DECLARE INTEGER RemoveDirectory IN kernel32 AS apiRemoveDirectory STRING lpPathName
 		DECLARE LONG MoveFile IN Win32API AS apiMoveFile STRING SourceFileName, STRING DestFileName
 		DECLARE INTEGER ShellExecute IN Shell32 AS apiShellExecute LONG nhWnd, STRING lpAction, STRING lpFile, STRING lpParams, STRING lpDirectory, INTEGER nShowCmd
 	ENDPROC
@@ -1735,6 +1760,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		TRY
 			this.DestroyWorkingCursors()
 			this.CreateWorkingCursors()
+			this.InitalizeIdValues()
 		
 		CATCH TO loException
 			SET STEP ON
@@ -1747,18 +1773,20 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		lxReturn = False
 		DO CASE
 			CASE VARTYPE(txSheet) = "C"
-				IF SEEK(BINTOC(tnWB)+UPPER(txSheet), "xl_sheets", "shname")
+				IF SEEK(BINTOC(tnWB)+UPPER(txSheet), "xl_sheets", "shname") .AND. SEEK(BINTOC(tnWB)+BINTOC(xl_sheets.sheet), "xl_relationships", "sheet")
 					lnSheet = xl_sheets.sheet
 					REPLACE xl_sheets.shdeleted WITH True IN xl_sheets
 					DELETE IN xl_sheets
+					DELETE IN xl_relationships
 					lxReturn = True
 				ENDIF
 		
 			CASE VARTYPE(txSheet) = "N"
-				IF SEEK(BINTOC(tnWB)+BINTOC(txSheet), "xl_sheets", "sheetndx")
+				IF SEEK(BINTOC(tnWB)+BINTOC(txSheet), "xl_sheets", "sheetndx") .AND. SEEK(BINTOC(tnWB)+BINTOC(xl_sheets.sheet), "xl_relationships", "sheet")
 					lnSheet = txSheet
 					REPLACE xl_sheets.shdeleted WITH True IN xl_sheets
 					DELETE IN xl_sheets
+					DELETE IN xl_relationships
 					lxReturn = True
 				ENDIF
 		ENDCASE
@@ -1771,15 +1799,153 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROCEDURE DeleteWorkbook		&& Deletes the selected workbook
 		LPARAMETERS tnWB
-		LOCAL llSuccess
+		LOCAL llSuccess, lnNdx
 		TRY
 			REPLACE xl_sheets.shdeleted  WITH True FOR workbook = tnWB IN xl_sheets
 			REPLACE xl_cells.celldeleted WITH True FOR workbook = tnWB IN xl_cells
 			DELETE FOR workbook = tnWB IN xl_workbooks
 			DELETE FOR workbook = tnWB IN xl_sheets
 			DELETE FOR workbook = tnWB IN xl_cells
+			DELETE FOR workbook = tnWB IN xl_strformat
+			DELETE FOR workbook = tnWB IN xl_strings
+			DELETE FOR workbook = tnWB IN xl_cellxfs
+			DELETE FOR workbook = tnWB IN xl_fonts
+			DELETE FOR workbook = tnWB IN xl_fills
+			DELETE FOR workbook = tnWB IN xl_borders
 			DELETE FOR workbook = tnWB IN xl_mergecells
 			DELETE FOR workbook = tnWB IN xl_colwidths
+			DELETE FOR workbook = tnWB IN xl_hdrfooterdefn
+			DELETE FOR workbook = tnWB IN xl_hdrfootertext
+			DELETE FOR workbook = tnWB IN xl_rowheights
+			DELETE FOR workbook = tnWB IN xl_validation
+			DELETE FOR workbook = tnWB IN xl_namerange
+			DELETE FOR workbook = tnWB IN xl_numfmts
+			DELETE FOR workbook = tnWB IN xl_rows
+			DELETE FOR workbook = tnWB IN xl_ndxcolors
+			DELETE FOR workbook = tnWB IN xl_mrucolors
+			DELETE FOR workbook = tnWB IN xl_relationships
+			DELETE FOR workbook = tnWB IN xl_extsheets
+			DELETE FOR workbook = tnWB IN xl_extcells
+			
+			lnNdx = ASCAN(this.LastBorderId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastBorderId, lnNdx)
+				lnNdx = ALEN(this.LastBorderId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastBorderId[lnNdx, 2]
+				ELSE
+					this.LastBorderId[1, 1] = 0                                          && Workbook Id
+					this.LastBorderId[1, 2] = 0                                          && Last Border Id
+				ENDIF
+			ENDIF
+			
+			lnNdx = ASCAN(this.LastCellXfsId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastCellXfsId, lnNdx)
+				lnNdx = ALEN(this.LastCellXfsId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastCellXfsId[lnNdx, 2]
+				ELSE
+					this.LastCellXfsId[1, 1] = 0                                         && Workbook Id
+					this.LastCellXfsId[1, 2] = 0                                         && Last CellXfs Id
+				ENDIF
+			ENDIF
+			
+			lnNdx = ASCAN(this.LastFillId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastFillId, lnNdx)
+				lnNdx = ALEN(this.LastFillId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastFillId[lnNdx, 2]
+				ELSE
+					this.LastFillId[1, 1] = 0                                            && Workbook Id
+					this.LastFillId[1, 2] = 0                                            && Last Fill Id
+				ENDIF
+			ENDIF
+		
+			lnNdx = ASCAN(this.LastFontId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastFontId, lnNdx)
+				lnNdx = ALEN(this.LastFontId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastFontId[lnNdx, 2]
+				ELSE
+					this.LastFontId[1, 1] = 0                                            && Workbook Id
+					this.LastFontId[1, 2] = 0                                            && Last Font Id
+				ENDIF
+			ENDIF
+		
+			lnNdx = ASCAN(this.LastIndexColorId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastIndexColorId, lnNdx)
+				lnNdx = ALEN(this.LastIndexColorId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastIndexColorId[lnNdx, 2]
+				ELSE
+					this.LastIndexColorId[1, 1] = 0                                      && Workbook Id
+					this.LastIndexColorId[1, 2] = 0                                      && Last IndexColor Id
+				ENDIF
+			ENDIF
+			
+			lnNdx = ASCAN(this.LastMruColorId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastMruColorId, lnNdx)
+				lnNdx = ALEN(this.LastMruColorId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastMruColorId[lnNdx, 2]
+				ELSE
+					this.LastMruColorId[1, 1] = 0                                        && Workbook Id
+					this.LastMruColorId[1, 2] = 0                                        && Last mruColor Id
+				ENDIF
+			ENDIF
+		
+			lnNdx = ASCAN(this.LastNumFmtId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastNumFmtId, lnNdx)
+				lnNdx = ALEN(this.LastNumFmtId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastNumFmtId[lnNdx, 2]
+				ELSE
+					this.LastNumFmtId[1, 1] = 0                                          && Workbook Id
+					this.LastNumFmtId[1, 2] = 0                                          && Last NumFmt Id
+				ENDIF
+			ENDIF
+		
+			lnNdx = ASCAN(this.LastRelationId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastRelationId, lnNdx)
+				lnNdx = ALEN(this.LastRelationId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastRelationId[lnNdx, 2]
+				ELSE
+					this.LastRelationId[1, 1] = 0                                        && Workbook Id
+					this.LastRelationId[1, 2] = 0                                        && Last Relationship Id
+				ENDIF
+			ENDIF
+		
+			lnNdx = ASCAN(this.LastSheetId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastSheetId, lnNdx)
+				lnNdx = ALEN(this.LastSheetId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastSheetId[lnNdx, 2]
+				ELSE
+					this.LastSheetId[1, 1] = 0                                           && Workbook Id
+					this.LastSheetId[1, 2] = 0                                           && Last Sheet Id
+				ENDIF
+			ENDIF
+		
+			lnNdx = ASCAN(this.LastStringId, tnWB, 1, -1, 1, 15)
+			IF lnNdx > 0
+				ADEL(this.LastStringId, lnNdx)
+				lnNdx = ALEN(this.LastStringId, 1) - 1
+				IF lnNdx > 0
+					DIMENSION this.LastStringId[lnNdx, 2]
+				ELSE
+					this.LastStringId[1, 1] = 0                                          && Workbook Id
+					this.LastStringId[1, 2] = 0                                          && Last String Id
+				ENDIF
+			ENDIF
 			llSuccess = True
 		
 		CATCH TO loException
@@ -1791,7 +1957,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROCEDURE Demo		&& Demo for the features of this class
 		LOCAL lnWb, lnSh1, lnRow, lnCol, lnSh2, lnSh3, lnSh4, lnCnt, lnFormat, llBoolean, lcNamedRange
-		LOCAL lnSh6, lnSh5, loInline, lnStyle1, lnStyle2, lnBorders
+		LOCAL lnSh6, lnSh5, loInline, lnStyle1, lnStyle2, lnBorders, lcString
 		lnWb = this.CreateWorkbook("ExcelTest.xlsx")
 		IF lnWb = 0
 			RETURN False
@@ -1868,6 +2034,18 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		this.SetCellValue(lnWb, lnSh1, 18, 1, "This text is rotated -45 degrees")
 		this.SetCellTextRotation(lnWb, lnSh1, 18, 1, -45)
 		
+		* Similar text
+		this.SetCellValue(lnWb, lnSh1, 15, 7, "This text is similar")
+		this.SetCellValue(lnWb, lnSh1, 16, 7, "This text is similar to the one above but is longer length")
+		
+		*-* Very long text
+		lcString = "Addtionally, there is a new method for reading an existing XLSX file into the working cursors and then supporting methods to extract the individual cell values and formatting.  However, this XLSX read method is still in development "
+		this.SetCellValue(lnWb, lnSh1, 22, 1, lcString)
+		lcString = lcString + "and not yet ready for use.  This is the method OpenXlsxWorkbook() - only use if you want to try it but the method will not necessarily read all the numeric"
+		this.SetCellValue(lnWb, lnSh1, 23, 1, lcString)
+		lcString = lcString + " or date values correctly at this point.  I did not want to hold this release of VFPxWorkbookXlsx class for the completion of the reading of the XLSX file due to the other bug fixes."
+		this.SetCellValue(lnWb, lnSh1, 24, 1, lcString)
+		
 		* Text with ASCII > 128
 		this.SetCellValue(lnWb, lnSh1, 19, 1, "This text that has ASCII chars > 128:" + CRLF + "Trademark symbol: " + CHR(174) + CRLF + "Copyright symbol: " + CHR(169))
 		
@@ -1879,6 +2057,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		this.SetColumnWidth(lnWb, lnSh1, 5, 15)
 		this.SetColumnWidth(lnWb, lnSh1, 6, 25)
 		this.SetColumnWidth(lnWb, lnSh1, 9, 15)
+		
+		*Row inserted
+		this.InsertRow(lnWb, lnSh1, 5, INSERT_AFTER)
+		
+		*Column inserted
+		this.InsertColumn(lnWb, lnSh1, 5, INSERT_RIGHT)
 		
 		* Sheet setup examples
 		this.SetPrintOrientation(lnWb, lnSh1, PORTRAIT_PRINT_ORIENTATION)
@@ -2141,8 +2325,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			RETURN False
 		ENDIF
 		
-		this.SetCellValidation(lnWb, lnSh1, 12, 1, LIST_VALID_TYPE, , , , , , , , , "Yes,No,Maybe")
-		this.SetCellValue(lnWb, lnSh1, 12, 2, "The cell to the left has a droplist validation")
+		this.SetCellValidation(lnWb, lnSh1, 13, 1, LIST_VALID_TYPE, , , , , , , , , "Yes,No,Maybe")
+		this.SetCellValue(lnWb, lnSh1, 13, 2, "The cell to the left has a droplist validation")
 		
 		this.SetCellValue(lnWb, lnSh6, 1, 1, "Named Value List")
 		this.SetCellValue(lnWb, lnSh6, 2, 1, "Named Value 1")
@@ -2154,8 +2338,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		lcNamedRange = this.AddNamedRange(lnWb, lnSh6, "Named Range", SCOPE_WB_NAMED_RANGE, "This is a comment", 2, 1, 7, 1)
 		
-		this.SetCellValidation(lnWb, lnSh1, 13, 1, LIST_VALID_TYPE, , , , , , , , , "=" + lcNamedRange)
-		this.SetCellValue(lnWb, lnSh1, 13, 2, "The cell to the left has a droplist validation based on a Named Range (stored in Hidden Sheet6)")
+		this.SetCellValidation(lnWb, lnSh1, 14, 1, LIST_VALID_TYPE, , , , , , , , , "=" + lcNamedRange)
+		this.SetCellValue(lnWb, lnSh1, 14, 2, "The cell to the left has a droplist validation based on a Named Range (stored in Hidden Sheet6)")
+		
+		this.InsertCell(lnWb, lnSh1,  9, 9, INSERT_RIGHT)
+		this.InsertCell(lnWb, lnSh1, 11, 9, INSERT_BEFORE)
+		
+		*-*  For testing sheet saving only
+		*this.DeleteSheet(lnWb, lnSh2)
 		
 		this.SaveWorkbook(lnWb)
 		IF this.Debug
@@ -2651,19 +2841,19 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROCEDURE GetCellValue		&& Returns the value of the cell
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
-		LOCAL lxValue, lnDays, lnDecimals, lnMSec, lnTime
+		LOCAL lxValue, lnDays, lnDecimals, lnMSec, lnTime, lnSize, lcType
 		IF PCOUNT() < 4
 			RETURN .NULL.
 		ENDIF
 		lxValue = .NULL.
 		IF this.GetCellRecord(tnWB, tnSheet, tnCellRow, tnCellCol)
+			lnDecimals = SET("DECIMALS")
 			DO CASE
 				CASE xl_cells.datatype = DATA_TYPE_DATE
 					lnDays  = CAST(xl_cells.cellvalue AS I)
 					lxValue = DATE(1900, 1, 1) + lnDays - 2
 		
 				CASE xl_cells.datatype = DATA_TYPE_TIME
-					lnDecimals  = SET("DECIMALS")
 					SET DECIMALS TO 12
 					lnMSec  = CAST(xl_cells.cellvalue AS N(20,12))
 					lnTime  = lnMSec * 24 * 60 * 60
@@ -2672,7 +2862,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					SET DECIMALS TO &lnDecimals
 		
 				CASE xl_cells.datatype = DATA_TYPE_DATETIME
-					lnDecimals  = SET("DECIMALS")
 					SET DECIMALS TO 12
 					lnDays  = CAST(xl_cells.cellvalue AS I)
 					lxValue = DATE(1900, 1, 1) + lnDays - 2
@@ -2692,13 +2881,15 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					lxValue = CAST(xl_cells.cellvalue AS I)
 		
 				CASE xl_cells.datatype = DATA_TYPE_FLOAT
-					lxValue = CAST(xl_cells.cellvalue AS F)
+					lnSize  = ATC(".", ALLTRIM(xl_cells.cellvalue)) + lnDecimals
+					lcType  = "N(" + TRANSFORM(lnSize) + "," + TRANSFORM(lnDecimals) + ")"
+					lxValue = CAST(xl_cells.cellvalue AS &lcType)
 		
 				CASE xl_cells.datatype = DATA_TYPE_CURRENCY
 					lxValue = CAST(xl_cells.cellvalue AS Y)
 		
 				CASE xl_cells.datatype = DATA_TYPE_PERCENT
-					lxValue = CAST(xl_cells.cellvalue AS F)
+					lxValue = CAST(xl_cells.cellvalue AS N(14,8))
 					lxValue = TRANSFORM(lxValue * 100) + "%"
 		
 				CASE xl_cells.datatype = DATA_TYPE_GENERAL
@@ -2746,6 +2937,15 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROTECTED PROCEDURE GetCellXfsRecord		&& Positions the record pointer to xl_cellxfs record; returns true if found, or false if not found
 		LPARAMETERS tnWB, tnId
 		RETURN SEEK(BINTOC(tnWB)+BINTOC(tnId), "xl_cellxfs", "id")
+	ENDPROC
+
+	PROTECTED PROCEDURE GetCheckSum		&& Returns the checksum the string
+		LPARAMETERS tcString
+		LOCAL lcString, lcCheckSum
+		lcString   = ALLTRIM(tcString)
+		lcCheckSum = SYS(2007, lcString, 0, 1)
+		lcCheckSum = lcCheckSum + PADR(lcString, (230-LEN(lcCheckSum)), "_")
+		RETURN lcCheckSum
 	ENDPROC
 
 	PROTECTED PROCEDURE GetChildNodeCount		&& Returns the number of child nodes
@@ -3357,7 +3557,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROTECTED PROCEDURE GetStringRecord		&& Positions the record pointer to the selected string record
 		LPARAMETERS tnWB, tcString
-		RETURN SEEK(BINTOC(tnWB)+PADR(UPPER(LEFT(tcString, 120)), 120, "X"), "xl_strings", "stringndx")
+		RETURN SEEK(BINTOC(tnWB)+this.GetCheckSum(tcString), "xl_strings", "stringndx")
 	ENDPROC
 
 	PROTECTED PROCEDURE GetStringXML		&& Returns a converted string from XML to text
@@ -3453,7 +3653,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LPARAMETERS tcName
 		LOCAL lcWBName, lnWBIndex
 		lcWBName = JUSTSTEM(tcName)
-		IF SEEK(PADL(UPPER(lcWBName), 200, " "), "xl_workbooks", "wbname")
+		IF SEEK(PADR(UPPER(lcWBName), 200, "_"), "xl_workbooks", "wbname")
 			lnWBIndex = xl_workbooks.workbook
 		ELSE
 			lnWBIndex = 0
@@ -3570,37 +3770,176 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		CATCH TO loException
 			this.oXDOM = .NULL.
 		ENDTRY
-		this.LastBorderId[1, 1] = 0       && Workbook Id
-		this.LastBorderId[1, 2] = 0       && Last Border Id
-		
-		this.LastCellXfsId[1, 1] = 0      && Workbook Id
-		this.LastCellXfsId[1, 2] = 0      && Last CellXfs Id
-		
-		this.LastFillId[1, 1] = 0         && Workbook Id
-		this.LastFillId[1, 2] = 0         && Last Fill Id
-		
-		this.LastFontId[1, 1] = 0         && Workbook Id
-		this.LastFontId[1, 2] = 0         && Last Font Id
-		
-		this.LastIndexColorId[1, 1] = 0   && Workbook Id
-		this.LastIndexColorId[1, 2] = 0   && Last IndexColor Id
-		
-		this.LastMruColorId[1, 1] = 0     && Workbook Id
-		this.LastMruColorId[1, 2] = 0     && Last mruColor Id
-		
-		this.LastNumFmtId[1, 1] = 0       && Workbook Id
-		this.LastNumFmtId[1, 2] = 0       && Last NumFmt Id
-		
-		this.LastRelationId[1, 1] = 0     && Workbook Id
-		this.LastRelationId[1, 2] = 0     && Last Relationship Id
-		
-		this.LastSheetId[1, 1] = 0        && Workbook Id
-		this.LastSheetId[1, 2] = 0        && Last Sheet Id
-		
-		this.LastStringId[1, 1] = 0       && Workbook Id
-		this.LastStringId[1, 2] = 0       && Last String Id
-		
+		this.InitalizeIdValues()
 		this.OnInit()
+	ENDPROC
+
+	PROTECTED PROCEDURE InitalizeIdValues		&& Initializes the internal Id values
+		DIMENSION this.LastBorderId[1, 2]
+		this.LastBorderId[1, 1] = 0                                          && Workbook Id
+		this.LastBorderId[1, 2] = 0                                          && Last Border Id
+		
+		DIMENSION this.LastCellXfsId[1, 2]
+		this.LastCellXfsId[1, 1] = 0                                         && Workbook Id
+		this.LastCellXfsId[1, 2] = 0                                         && Last CellXfs Id
+		
+		DIMENSION this.LastFillId[1, 2]
+		this.LastFillId[1, 1] = 0                                            && Workbook Id
+		this.LastFillId[1, 2] = 0                                            && Last Fill Id
+		
+		DIMENSION this.LastFontId[1, 2]
+		this.LastFontId[1, 1] = 0                                            && Workbook Id
+		this.LastFontId[1, 2] = 0                                            && Last Font Id
+		
+		DIMENSION this.LastIndexColorId[1, 2]
+		this.LastIndexColorId[1, 1] = 0                                      && Workbook Id
+		this.LastIndexColorId[1, 2] = 0                                      && Last IndexColor Id
+		
+		DIMENSION this.LastMruColorId[1, 2]
+		this.LastMruColorId[1, 1] = 0                                        && Workbook Id
+		this.LastMruColorId[1, 2] = 0                                        && Last mruColor Id
+		
+		DIMENSION this.LastNumFmtId[1, 2]
+		this.LastNumFmtId[1, 1] = 0                                          && Workbook Id
+		this.LastNumFmtId[1, 2] = 0                                          && Last NumFmt Id
+		
+		DIMENSION this.LastRelationId[1, 2]
+		this.LastRelationId[1, 1] = 0                                        && Workbook Id
+		this.LastRelationId[1, 2] = 0                                        && Last Relationship Id
+		
+		DIMENSION this.LastSheetId[1, 2]
+		this.LastSheetId[1, 1] = 0                                           && Workbook Id
+		this.LastSheetId[1, 2] = 0                                           && Last Sheet Id
+		
+		DIMENSION this.LastStringId[1, 2]
+		this.LastStringId[1, 1] = 0                                          && Workbook Id
+		this.LastStringId[1, 2] = 0                                          && Last String Id
+	ENDPROC
+
+	PROCEDURE InsertCell		&& Inserts a new cell into the sheet
+		LPARAMETERS tnWB, tnSheet, tnRow, tnCol, tnShift
+		LOCAL llReturn, lnRow
+		IF PCOUNT() < 5
+			RETURN False
+		ENDIF
+		IF this.GetSheetRecord(tnWB, tnSheet)
+			SELECT xl_cells
+			SET ORDER TO TAG reverse
+			DO CASE
+				CASE tnShift = INSERT_LEFT
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellcol >= tnCol .AND. cellrow = tnRow
+						REPLACE xl_cells.cellcol WITH xl_cells.cellcol + 1 IN xl_cells
+						this.SetRowMaxColumn(tnWB, tnSheet, xl_cells.cellrow, xl_cells.cellcol)
+					ENDSCAN
+					llReturn = True
+		
+				CASE tnShift = INSERT_RIGHT
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellcol > tnCol .AND. cellrow = tnRow
+						REPLACE xl_cells.cellcol WITH xl_cells.cellcol + 1 IN xl_cells
+						this.SetRowMaxColumn(tnWB, tnSheet, xl_cells.cellrow, xl_cells.cellcol)
+					ENDSCAN
+					llReturn = True
+		
+				CASE tnShift = INSERT_BEFORE
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellrow >= tnRow .AND. cellcol = tnCol
+						REPLACE xl_cells.cellrow WITH xl_cells.cellrow + 1 IN xl_cells
+						this.SetRowMaxColumn(tnWB, tnSheet, xl_cells.cellrow, xl_cells.cellcol)
+					ENDSCAN
+					llReturn = True
+		
+				CASE tnShift = INSERT_AFTER
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellrow > tnRow .AND. cellcol = tnCol
+						REPLACE xl_cells.cellrow WITH xl_cells.cellrow + 1 IN xl_cells
+						this.SetRowMaxColumn(tnWB, tnSheet, xl_cells.cellrow, xl_cells.cellcol)
+					ENDSCAN
+					llReturn = True
+		
+				OTHERWISE
+					llReturn = False
+			ENDCASE
+			SET ORDER TO
+		ELSE
+			llReturn = False
+		ENDIF
+		RETURN llReturn
+	ENDPROC
+
+	PROCEDURE InsertColumn		&& Inserts a new column into the sheet
+		LPARAMETERS tnWB, tnSheet, tnCol, tnShift
+		LOCAL llReturn
+		IF PCOUNT() < 4
+			RETURN False
+		ENDIF
+		IF this.GetSheetRecord(tnWB, tnSheet)
+			SELECT xl_cells
+			SET ORDER TO TAG reverse
+			DO CASE
+				CASE tnShift = INSERT_LEFT
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellcol >= tnCol
+						REPLACE xl_cells.cellcol WITH xl_cells.cellcol + 1 IN xl_cells
+						IF SEEK(BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(xl_cells.cellrow), "xl_rows", "id") .AND. xl_cells.cellcol > xl_rows.maxcol
+							REPLACE xl_rows.maxcol WITH xl_cells.cellcol IN xl_rows
+						ENDIF
+					ENDSCAN
+					llReturn = True
+		
+				CASE tnShift = INSERT_RIGHT
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellcol > tnCol
+						REPLACE xl_cells.cellcol WITH xl_cells.cellcol + 1 IN xl_cells
+						IF SEEK(BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(xl_cells.cellrow), "xl_rows", "id") .AND. xl_cells.cellcol > xl_rows.maxcol
+							REPLACE xl_rows.maxcol WITH xl_cells.cellcol IN xl_rows
+						ENDIF
+					ENDSCAN
+					llReturn = True
+		
+				OTHERWISE
+					llReturn = False
+			ENDCASE
+			SET ORDER TO
+		ELSE
+			llReturn = False
+		ENDIF
+		RETURN llReturn
+	ENDPROC
+
+	PROCEDURE InsertRow		&& Inserts a new row into the sheet
+		LPARAMETERS tnWB, tnSheet, tnRow, tnShift
+		LOCAL llReturn, lnRow
+		IF PCOUNT() < 4
+			RETURN False
+		ENDIF
+		IF this.GetSheetRecord(tnWB, tnSheet)
+			SELECT xl_cells
+			SET ORDER TO TAG reverse
+			DO CASE
+				CASE tnShift = INSERT_BEFORE
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellrow >= tnRow
+						lnRow = xl_cells.cellrow
+						REPLACE xl_cells.cellrow WITH lnRow + 1 IN xl_cells
+						IF SEEK(BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(lnRow), "xl_rows", "id")
+							REPLACE xl_rows.row WITH xl_cells.cellrow IN xl_rows
+						ENDIF
+					ENDSCAN
+					llReturn = True
+		
+				CASE tnShift = INSERT_AFTER
+					SCAN FOR workbook = tnWB .AND. sheet = tnSheet .AND. cellrow > tnRow
+						lnRow = xl_cells.cellrow
+						REPLACE xl_cells.cellrow WITH lnRow + 1 IN xl_cells
+						IF SEEK(BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(lnRow), "xl_rows", "id")
+							REPLACE xl_rows.row WITH xl_cells.cellrow IN xl_rows
+						ENDIF
+					ENDSCAN
+					llReturn = True
+		
+				OTHERWISE
+					llReturn =  False
+			ENDCASE
+			SET ORDER TO
+		ELSE
+			llReturn = False
+		ENDIF
+		RETURN llReturn
 	ENDPROC
 
 	PROCEDURE IsCellFormula		&& Returns True if cell contains a formula
@@ -3909,6 +4248,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*-*			Get the sheets
 					RAISEEVENT(this, "OnShowStatusMessage", 1, 4)
 					lcWorkbook = FILETOSTR(lcWbXmlPath + "xl\workbook.xml")
+		
 					lcSheets   = this.GetNodeElement(lcWorkbook, 'sheets', 1, False, 1)
 					lnNode     = 1
 					lcSheet    = this.GetNodeElement(lcSheets, 'sheet', lnNode)
@@ -3947,6 +4287,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 						lcSheet = this.GetNodeElement(lcSheets, 'sheet', lnNode)
 					ENDDO
 					this.SetLastId(lnWB, lnNode-1, "xl_sheets")
+		
+		SET COVERAGE TO
 		
 		*-*			Get the defined name ranges
 					RAISEEVENT(this, "OnShowStatusMessage", 1, 5)
@@ -4350,7 +4692,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDDO
 					llPrsvSp = False
 				ENDIF
-				INSERT INTO xl_strings (id, workbook, stringxml, stringval, presvspace, formatted) VALUES (lnNode-1, tnWB, lcText, this.GetStringXML(lcText), llPrsvSp, llFormatted)
+				INSERT INTO xl_strings (id, workbook, checksum, stringxml, stringval, presvspace, formatted) ;
+					VALUES (lnNode-1, tnWB, this.GetCheckSum(tcString), lcText, this.GetStringXML(lcText), llPrsvSp, llFormatted)
 		
 				lnNode = lnNode + 1
 				lcString = this.GetNodeElement(lcStrings, 'si', lnNode)
@@ -4439,7 +4782,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			lnMaxCol = CAST(this.GetNodeAttributeValue(lcCol, "max") AS I)
 			lnWidth  = CAST(this.GetNodeAttributeValue(lcCol, "width") AS N(16,9)) - 0.71093750
 			FOR lnCol=lnMinCol TO lnMaxCol
-				INSERT INTO xl_colwidths (workbook, sheet, column, width) VALUES (tnWB, tnSheet, lnCol, lnWidth)
+				INSERT INTO xl_colwidths (workbook, sheet, COLUMN, width) VALUES (tnWB, tnSheet, lnCol, lnWidth)
 			ENDFOR
 			lnNode = lnNode + 1
 			lcCol  = this.GetNodeElement(lcCols, 'col', lnNode)
@@ -4903,8 +5246,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LPARAMETERS tcDir
 		LOCAL llReturn, loException
 		TRY
-			RMDIR (tcDir)
-			llReturn = True
+			llReturn = IIF(apiRemoveDirectory(tcDir) != 0, True, False)
 		
 		CATCH TO loException
 			SET STEP ON
@@ -5035,6 +5377,127 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loReturn
 	ENDPROC
 
+	PROCEDURE SaveGridToWorkbookEx		&& Saves the passed grid to a workbook without adding the content to the internal cursors
+		LPARAMETERS toGrid, tcFileName, tlFreeze, tcSheetName
+		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentry, lxCellValue
+		LOCAL lnFldCnt, lnColWidth
+		llError = False
+		DO CASE
+			CASE PCOUNT() < 2
+				RETURN False
+		
+			CASE PCOUNT() = 2
+				tlFreeze    = True
+				tcSheetName = toGrid.Name
+		
+			CASE PCOUNT() = 3
+				tcSheetName = toGrid.Name
+		ENDCASE
+		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
+			tcSheetName = toGrid.Name
+		ENDIF
+		
+		*-* Set temporary output path
+		lcTempPath = this.CreateWorkingDirectories()
+		IF ISNULL(lcTempPath)
+			RETURN False
+		ENDIF
+		lcAlias  = JUSTSTEM(toGrid.RecordSource)
+		lnFldCnt = toGrid.ColumnCount
+		IF this.WriteDirectXMLs(lcTempPath, tcSheetName)
+		*-*	Write the sheet XML
+			TRY
+				lcFileName = lcTempPath + "xl\worksheets\sheet1.xml"
+				lhFile = FCREATE(lcFileName)
+				IF lhFile < 0
+					THROW
+				ENDIF
+			
+		*-*		Write sheet XML header information
+				FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+				FWRITE(lhFile, '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"')
+				FWRITE(lhFile, ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"')
+				FWRITE(lhFile, ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac"')
+				FWRITE(lhFile, ' xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">')
+			
+		*-*		Write the sheet view information which includes the freeze pane information
+				FWRITE(lhFile, '<dimension ref="A1:' + this.ColumnIndexToAscii(lnFldCnt) + TRANSFORM(RECCOUNT(lcAlias)+1) + '"/>')
+				IF tlFreeze
+					FWRITE(lhFile, '<sheetViews><sheetView workbookViewId="0">')
+					FWRITE(lhFile, '<pane state="frozenSplit" activePane="bottomLeft" topLeftCell="A2" ySplit="1"/>')
+					FWRITE(lhFile, '<selection activeCell="A2" sqref="A2" pane="bottomLeft"/>')
+				ENDIF
+				FWRITE(lhFile, '</sheetView></sheetViews>')
+				FWRITE(lhFile, '<sheetFormatPr defaultRowHeight="15"/>')
+		
+		*-*		Write sheet Column widths
+				FWRITE(lhFile, '<cols>')
+				FOR lnCol=1 TO lnFldCnt
+					lnColWidth = this.ConvertPixelsToExcelUnits(toGrid.Columns(lnCol).Width)
+					FWRITE(lhFile, '<col min="' + TRANSFORM(lnCol) + '" max="' + TRANSFORM(lnCol) + '" width="' + TRANSFORM(lnColWidth+0.7109375) + '" customWidth="1"/>')
+				ENDFOR
+				FWRITE(lhFile, '</cols>')
+		
+		*-*		Write sheet cell data values
+				lcRowDefHt = ' ht="30"'
+				FWRITE(lhFile, '<sheetData>')
+			
+		*-*		Place field names in the first row
+				IF toGrid.HeaderHeight > 0                                       && Change recommendation by Doug Hennig (if no headers, then no output)
+					FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
+					FOR lnCol=1 TO lnFldCnt
+						FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + '1" t="inlineStr">')
+						FWRITE(lhFile, '<is><t>' + toGrid.Columns(lnCol).Header1.Caption + '</t></is></c>')
+					ENDFOR
+					FWRITE(lhFile, '</row>')
+					lnRow = 1
+				ELSE
+					lnRow = 0
+				ENDIF
+		
+		*-*		Write the grid field values to cells
+				lcSETCentry = SET("CENTURY")
+				SET CENTURY ON
+				SELECT &lcAlias
+				SCAN
+					lnRow = lnRow + 1
+					FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
+					FOR lnCol=1 TO lnFldCnt
+						lxCellValue = EVALUATE(toGrid.Columns(lnCol).ControlSource)
+						this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
+					ENDFOR
+					FWRITE(lhFile, '</row>')
+				ENDSCAN
+				SET CENTURY &lcSETCentry
+		
+		*-*		End the sheet cell data values and worksheet
+				FWRITE(lhFile, '</sheetData>')
+				FWRITE(lhFile, '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>')
+				FWRITE(lhFile, '</worksheet>')
+		
+			CATCH TO loException
+				SET STEP ON
+				llError = True
+				this.ErrorLevelId = 14
+				RAISEEVENT(this, "OnShowErrorMessage", 14, loException.message)
+		
+			FINALLY
+				FCLOSE(lhFile)
+				STRTOFILE(FILETOSTR(lcFileName), lcFileName, 4)                  && Save as UTF-8
+			ENDTRY
+			IF llError
+				RETURN False
+			ENDIF
+		
+		*-*	Create the XLSX file
+			this.CreateExcelFile(lcTempPath, JUSTPATH(tcFileName), JUSTSTEM(tcFileName))
+			this.RemoveWorkingDirectories(lcTempPath)
+			RETURN True
+		ELSE
+			RETURN False
+		ENDIF
+	ENDPROC
+
 	PROCEDURE SaveTableToWorkbook		&& Saves the table passed (alias) as a workbook sheet
 		LPARAMETERS tcAlias, tnWB, tlFreeze, tlSaveWB, tcSheetName
 		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, lnFldCnt, llError, llOpenedTbl, loException, lcCurAlias, loReturn
@@ -5157,6 +5620,156 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loReturn
 	ENDPROC
 
+	PROCEDURE SaveTableToWorkbookEx		&& Creates a new workbook from a table; direct write to XLSX file without loading internal cursors
+		LPARAMETERS tcAlias, tcXlsxName, taFields, tlFreeze, tcSheetName
+		LOCAL lcCurAlias, llOpenedTbl, lcAlias, llError, loException, lhFile, lnCol, lcRowDefHt
+		LOCAL lnFldCnt, lnRow, lxCellValue, lcTempPath, lcFileName, lcSETCentry
+		EXTERNAL ARRAY taFields
+		llError = False
+		DO CASE
+			CASE PCOUNT() < 2
+				RETURN False
+		
+			CASE PCOUNT() = 2
+				DIMENSION taFields[1, 2]
+				taFields[1, 1] = .NULL.
+				tlFreeze       = True
+				tcSheetName    = JUSTSTEM(tcAlias)
+		
+			CASE PCOUNT() = 3
+				tlFreeze    = True
+				tcSheetName = JUSTSTEM(tcAlias)
+		
+			CASE PCOUNT() = 4
+				tcSheetName = JUSTSTEM(tcAlias)
+		ENDCASE
+		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
+			tcSheetName = JUSTSTEM(tcAlias)
+		ENDIF
+		DO CASE
+			CASE USED(tcAlias)
+				lcCurAlias  = ALIAS()
+				llOpenedTbl = False
+				lcAlias = tcAlias
+		
+			CASE OCCURS("\", tcAlias) > 0
+				TRY
+					lcAlias = JUSTSTEM(tcAlias)
+					USE (tcAlias) IN 0 ALIAS (lcAlias) SHARED
+					llOpenedTbl = True
+		
+				CATCH TO loException
+					llError = True
+				ENDTRY
+				IF llError
+					RETURN False
+				ENDIF
+		
+			OTHERWISE
+				RETURN False
+		ENDCASE
+		*-*	Get the table fields to export if not passed as a parameter
+		SELECT &lcAlias
+		IF ISNULL(taFields) .OR. EMPTY(taFields[1])
+			DIMENSION taFields[1, 5]
+			taFields = ""
+			lnFldCnt = AFIELDS(taFields, lcAlias)
+			FOR lnCol=1 TO lnFldCnt
+				taFields[lnCol, 2] = taFields[lnCol, 1]
+			ENDFOR
+		ELSE	
+			lnFldCnt = ALEN(taFields, 1)
+			IF ALEN(taFields, 2) < 2 .OR. VARTYPE(taFields[1, 2]) != "C"
+				RETURN False
+			ENDIF
+		ENDIF
+		
+		*-* Set temporary output path
+		lcTempPath = this.CreateWorkingDirectories()
+		IF ISNULL(lcTempPath)
+			RETURN False
+		ENDIF
+		
+		IF this.WriteDirectXMLs(lcTempPath, tcSheetName)
+		*-*	Write the sheet XML
+			TRY
+				lcFileName = lcTempPath + "xl\worksheets\sheet1.xml"
+				lhFile = FCREATE(lcFileName)
+				IF lhFile < 0
+					THROW
+				ENDIF
+			
+		*-*		Write sheet XML header information
+				FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+				FWRITE(lhFile, '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"')
+				FWRITE(lhFile, ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"')
+				FWRITE(lhFile, ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac"')
+				FWRITE(lhFile, ' xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">')
+			
+		*-*		Write the sheet view information which includes the freeze pane information
+				FWRITE(lhFile, '<dimension ref="A1:' + this.ColumnIndexToAscii(lnFldCnt) + TRANSFORM(RECCOUNT(lcAlias)+1) + '"/>')
+				IF tlFreeze
+					FWRITE(lhFile, '<sheetViews><sheetView workbookViewId="0">')
+					FWRITE(lhFile, '<pane state="frozenSplit" activePane="bottomLeft" topLeftCell="A2" ySplit="1"/>')
+					FWRITE(lhFile, '<selection activeCell="A2" sqref="A2" pane="bottomLeft"/>')
+				ENDIF
+				FWRITE(lhFile, '</sheetView></sheetViews>')
+				FWRITE(lhFile, '<sheetFormatPr defaultRowHeight="15"/>')
+			
+		*-*		Write sheet cell data values
+				FWRITE(lhFile, '<sheetData>')
+			
+		*-*		Place field names in the first row
+				lcRowDefHt = ' ht="30"'
+				FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
+				FOR lnCol=1 TO lnFldCnt
+					FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + '1" t="inlineStr">')
+					FWRITE(lhFile, '<is><t>' + taFields[lnCol, 3] + '</t></is></c>')
+				ENDFOR
+				FWRITE(lhFile, '</row>')
+			
+		*-*		Write the table field values to cells
+				lcSETCentry = SET("CENTURY")
+				SET CENTURY ON
+				lnRow = 1
+				SCAN
+					lnRow = lnRow + 1
+					FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
+					FOR lnCol=1 TO lnFldCnt
+						lxCellValue = EVALUATE(lcAlias + '.' + taFields[lnCol, 1])
+						this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
+					ENDFOR
+					FWRITE(lhFile, '</row>')
+				ENDSCAN
+				SET CENTURY &lcSETCentry
+			
+		*-*		End the sheet cell data values and worksheet
+				FWRITE(lhFile, '</sheetData>')
+				FWRITE(lhFile, '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>')
+				FWRITE(lhFile, '</worksheet>')
+			
+			CATCH TO loException
+				SET STEP ON
+				llError = True
+				this.ErrorLevelId = 14
+				RAISEEVENT(this, "OnShowErrorMessage", 14, loException.message)
+			
+			FINALLY
+				FCLOSE(lhFile)
+				STRTOFILE(FILETOSTR(lcFileName), lcFileName, 4)      && Save as UTF-8
+			ENDTRY
+			IF llError
+				RETURN False
+			ENDIF
+		*-*	Create the XLSX file
+			this.CreateExcelFile(lcTempPath, JUSTPATH(tcXlsxName), JUSTSTEM(tcXlsxName))
+			this.RemoveWorkingDirectories(lcTempPath)
+			RETURN True
+		ELSE
+			RETURN False
+		ENDIF
+	ENDPROC
+
 	PROCEDURE SaveWorkbook		&& Saves the selected workbook as an XLSX file
 		LPARAMETERS tnWB
 		LOCAL lcTempPath, lnSheet, lcDeleted, lcSetPoint, lcSeparator, lcSetDeleted, llReturn, lcAlias
@@ -5195,7 +5808,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					SCAN FOR workbook = tnWB .AND. !shdeleted
 						lnSheet = lnSheet + 1
 						RAISEEVENT(this, "OnShowStatusMessage", 2, lnSheet+5)
-						IF !this.WriteSheetXMLs(tnWB, lnSheet, lcTempPath)
+						IF !this.WriteSheetXMLs(tnWB, xl_sheets.sheet, lcTempPath)
 							llReturn = False
 							EXIT
 						ENDIF
@@ -5203,8 +5816,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					SELECT xl_sheets
 					SET ORDER TO
 		
-					IF llReturn
-						this.CreateExcelFile(tnWB, lcTempPath)
+					IF llReturn .AND. SEEK(BINTOC(tnWB), "xl_workbooks", "workbook")
+						this.CreateExcelFile(lcTempPath, xl_workbooks.filepath, xl_workbooks.wbname)
 					ENDIF
 				ELSE
 					llReturn = False
@@ -7299,6 +7912,197 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
+	PROTECTED PROCEDURE WriteDirectCellValue		&& Writes the cell value directly to the sheets xml
+		LPARAMETERS thFile, tnRow, tnCol, txCellValue
+		DO CASE
+			CASE VARTYPE(txCellValue) = DATA_TYPE_DATE
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+				FWRITE(thFile, '<is><t>' + TRANSFORM(txCellValue) + '</t></is></c>')
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_DATETIME
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+				FWRITE(thFile, '<is><t>' + TRANSFORM(txCellValue) + '</t></is></c>')
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_LOGICAL
+				txCellValue = IIF(txCellValue, GETWORDNUM(this.TrueFalseValue, 1, "|"), GETWORDNUM(this.TrueFalseValue, 2, "|"))
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+				FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is></c>')
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_CURRENCY
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '">')
+				FWRITE(thFile, '<v>' + TRANSFORM(MTON(txCellValue)) + '</v></c>')
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_CHAR
+				txCellValue = ALLTRIM(txCellValue)
+				txCellValue = STRTRAN(txCellValue, CHR(145), CHR(226)+CHR(128)+CHR(152))
+				txCellValue = STRTRAN(txCellValue, CHR(146), CHR(226)+CHR(128)+CHR(153))
+				txCellValue = STRTRAN(txCellValue, CHR(147), CHR(226)+CHR(128)+CHR(156))
+				txCellValue = STRTRAN(txCellValue, CHR(148), CHR(226)+CHR(128)+CHR(157))
+		
+				txCellValue = STRTRAN(txCellValue, CHR(169), CHR(194)+CHR(169))
+				txCellValue = STRTRAN(txCellValue, CHR(174), CHR(194)+CHR(174))
+		
+				txCellValue = CHRTRAN(txCellValue, CHR(150)+CHR(151), CHR(45)+CHR(45))
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+				FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is></c>')
+		
+			CASE INLIST(VARTYPE(txCellValue), DATA_TYPE_INT, DATA_TYPE_FLOAT)
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '">')
+				FWRITE(thFile, '<v>' + TRANSFORM(txCellValue) + '</v></c>')
+		
+			OTHERWISE
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+				FWRITE(thFile, '<is><t>Unsupported Field Type</t></is></c>')
+		ENDCASE
+	ENDPROC
+
+	PROTECTED PROCEDURE WriteDirectXMLs		&& Writes the workbook XMLs for direct table/grid to workbook output
+		LPARAMETERS tcPath, tcSheetName
+		*-*	Create the supporting XML files
+		LOCAL lhFile, lcFileName, loException
+		loException = .NULL.
+		TRY
+			lhFile = FCREATE(tcPath + "[Content_Types].xml")
+			IF lhFile < 0
+				THROW
+			ENDIF
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+			FWRITE(lhFile, '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">')
+			FWRITE(lhFile, '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>')
+			FWRITE(lhFile, '<Default Extension="xml" ContentType="application/xml"/>')
+			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" PartName="/xl/workbook.xml"/>')
+		
+			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml" PartName="/xl/styles.xml"/>')
+			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet1.xml"/>')
+			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-package.core-properties+xml" PartName="/docProps/core.xml"/>')
+			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml" PartName="/docProps/app.xml"/>')
+			FWRITE(lhFile, '</Types>')
+			FCLOSE(lhFile)
+		
+		*-*	Save the .rels XML
+			lhFile = FCREATE(tcPath + "_rels\.rels")
+			IF lhFile < 0
+				THROW
+			ENDIF
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+			FWRITE(lhFile, '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">')
+			FWRITE(lhFile, '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>')
+			FWRITE(lhFile, '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>')
+			FWRITE(lhFile, '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>')
+			FWRITE(lhFile, '</Relationships>')
+			FCLOSE(lhFile)
+		
+		*-*	Write the workbook relationships file
+			lhFile = FCREATE(tcPath + "xl\_rels\workbook.xml.rels")
+			IF lhFile < 0
+				THROW
+			ENDIF
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+			FWRITE(lhFile, '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">')
+			FWRITE(lhFile, '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>')
+			FWRITE(lhFile, '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>')
+			FWRITE(lhFile, '</Relationships>')
+			FCLOSE(lhFile)
+		
+		*-*	Save the app XML
+			lcFileName = tcPath + "docProps\app.xml"
+			lhFile = FCREATE(lcFileName)
+			IF lhFile < 0
+				THROW
+			ENDIF
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+			FWRITE(lhFile, '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">')
+			FWRITE(lhFile, '<Application>ExcelXMLX Release ' + TRANSFORM(this.ExcelXlsxRelease) + '</Application>')
+			IF !EMPTY(this.CompanyName)
+				FWRITE(lhFile, '<Company>' + this.CompanyName + '</Company>')
+			ENDIF
+			FWRITE(lhFile, '</Properties>')
+			FCLOSE(lhFile)
+			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
+		
+		*-*	Save the core XML
+			lcFileName = tcPath + "docProps\core.xml"
+			lhFile = FCREATE(lcFileName)
+			IF lhFile < 0
+				THROW
+			ENDIF
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+			FWRITE(lhFile, '<cp:coreProperties ')
+			FWRITE(lhFile, 'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ')
+			FWRITE(lhFile, 'xmlns:dc="http://purl.org/dc/elements/1.1/" ')
+			FWRITE(lhFile, 'xmlns:dcterms="http://purl.org/dc/terms/" ')
+			FWRITE(lhFile, 'xmlns:dcmitype="http://purl.org/dc/dcmitype/" ')
+			FWRITE(lhFile, 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">')
+			IF !EMPTY(this.Title)
+				FWRITE(lhFile, '<dc:title>' + this.GetXMLString(this.Title) + '</dc:title>')
+			ENDIF
+			IF !EMPTY(this.Subject)
+				FWRITE(lhFile, '<dc:subject>' + this.GetXMLString(this.Subject) + '</dc:subject>')
+			ENDIF
+			IF !EMPTY(this.CreatorName)
+				FWRITE(lhFile, '<dc:creator>' + this.GetXMLString(this.CreatorName) + '</dc:creator>')
+			ENDIF
+			IF !EMPTY(this.UserName)
+				FWRITE(lhFile, '<cp:lastModifiedBy>' + this.GetXMLString(this.UserName) + '</cp:lastModifiedBy>')
+			ENDIF
+			IF VERSION(5) < 900
+				FWRITE(lhFile, '<dcterms:created xsi:type="dcterms:W3CDTF">' + this.TTOC3(DATETIME()) + 'Z</dcterms:created>')
+				FWRITE(lhFile, '<dcterms:modified xsi:type="dcterms:W3CDTF">' + this.TTOC3(DATETIME()) + 'Z</dcterms:modified>')
+			ELSE
+				FWRITE(lhFile, '<dcterms:created xsi:type="dcterms:W3CDTF">' + TTOC(DATETIME(), 3) + 'Z</dcterms:created>')
+				FWRITE(lhFile, '<dcterms:modified xsi:type="dcterms:W3CDTF">' + TTOC(DATETIME(), 3) + 'Z</dcterms:modified>')
+			ENDIF
+			FWRITE(lhFile, '</cp:coreProperties>')
+			FCLOSE(lhFile)
+			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
+		
+		*-*	Save the styles XML
+			lcFileName = tcPath + "xl\styles.xml"
+			lhFile = FCREATE(lcFileName)
+			IF lhFile < 0
+				THROW
+			ENDIF
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+			FWRITE(lhFile, '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ')
+			FWRITE(lhFile, 'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" ')
+			FWRITE(lhFile, 'mc:Ignorable="x14ac" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">')
+			FWRITE(lhFile, '<fonts count="1" x14ac:knownFonts="1"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>')
+			FWRITE(lhFile, '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>')
+			FWRITE(lhFile, '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>')
+			FWRITE(lhFile, '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>')
+			FWRITE(lhFile, '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>')
+			FWRITE(lhFile, '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>')
+			FWRITE(lhFile, '</styleSheet>')
+			FCLOSE(lhFile)
+			STRTOFILE(FILETOSTR(lcFileName), lcFileName, 4)      && Save as UTF-8
+		
+		*-*	Write the workbook XML
+			lcFileName = tcPath + "xl\workbook.xml"
+			lhFile = FCREATE(lcFileName)
+			IF lhFile < 0
+				THROW
+			ENDIF
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+ LF)
+			FWRITE(lhFile, '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">')
+			IF EMPTY(tcSheetName)
+				FWRITE(lhFile, '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets>')
+			ELSE
+				FWRITE(lhFile, '<sheets><sheet name="' + tcSheetName + '" sheetId="1" r:id="rId1"/></sheets>')
+			ENDIF
+			FWRITE(lhFile, '<calcPr calcId="0"/>')
+			FWRITE(lhFile, '</workbook>')
+			FCLOSE(lhFile)
+			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)          && Save as UTF-8
+		
+		CATCH TO loException
+			SET STEP ON
+			FCLOSE(lhFile)
+			this.ErrorLevelId = 18
+			RAISEEVENT(this, "OnShowErrorMessage", 18, "Unable to create workbook supporting XMLs")
+		ENDTRY
+		RETURN ISNULL(loException)
+	ENDPROC
+
 	PROTECTED PROCEDURE WriteRelationshipsXML		&& Writes the relationships xml file
 		LPARAMETERS tnWB, tcPath
 		LOCAL lhFile, lcBaseType, llSuccess
@@ -8320,7 +9124,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 			lcBaseContentType = '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.'
 			SELECT xl_relationships
-			SCAN FOR workbook = tnWB
+			SCAN FOR workbook = tnWB .AND. !DELETED()
 				DO CASE
 					CASE xl_relationships.reltype = "calcChain"
 		*				FWRITE(lhFile, lcBaseContentType + 'calcChain+xml" PartName="/xl/calcChain.xml"/>')

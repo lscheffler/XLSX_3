@@ -26,7 +26,6 @@ DEFINE CLASS form1 AS form
 	*< OBJECTDATA: ObjPath="Command2" UniqueID="" Timestamp="" />
 	*< OBJECTDATA: ObjPath="Grid1" UniqueID="" Timestamp="" />
 	*< OBJECTDATA: ObjPath="Command3" UniqueID="" Timestamp="" />
-	*< OBJECTDATA: ObjPath="Check1" UniqueID="" Timestamp="" />
 
 	AutoCenter = .T.
 	Caption = "Test"
@@ -37,18 +36,6 @@ DEFINE CLASS form1 AS form
 	MinButton = .F.
 	Name = "Form1"
 	Width = 761
-
-	ADD OBJECT 'Check1' AS checkbox WITH ;
-		Alignment = 0, ;
-		AutoSize = .T., ;
-		Caption = "Use Class Private DE", ;
-		Height = 17, ;
-		Left = 390, ;
-		Name = "Check1", ;
-		Top = 12, ;
-		Value = .T., ;
-		Width = 137
-		*< END OBJECT: BaseClass="checkbox" />
 
 	ADD OBJECT 'clsVFPxWorkbookXLSX' AS vfpxworkbookxlsx WITH ;
 		Height = 17, ;
@@ -104,13 +91,6 @@ DEFINE CLASS form1 AS form
 		thisform.grid1.Height = thisform.Height - thisform.grid1.Top - 7
 	ENDPROC
 
-	PROCEDURE Check1.Click
-		thisform.clsVFPxWorkbookXLSX.UsePrivateDE = this.Value
-		IF this.Value
-			MESSAGEBOX("Changing this value to True will cause the Grid's RecordSource property to lose its assignment to the Employee table.  You must reassign this manually.")
-		ENDIF
-	ENDPROC
-
 	PROCEDURE Command1.Click
 		LOCAL lcTable, lcExcel
 		lcExcel = SYS(5) + ADDBS(SYS(2003)) + "Northwind Customers.xlsx"
@@ -130,7 +110,7 @@ DEFINE CLASS form1 AS form
 	PROCEDURE Command3.Click
 		LOCAL lcExcel
 		lcExcel = SYS(5) + ADDBS(SYS(2003)) + "Northwind Employees.xlsx"
-		thisform.clsVFPxWorkbookXLSX.SaveGridToWorkbook(thisform.Grid1, lcExcel, .T., .T.)
+		thisform.clsVFPxWorkbookXLSX.SaveGridToWorkbookEX(thisform.Grid1, lcExcel, .T., "Employees")
 		WAIT WINDOW "Saved To Excel" NOWAIT
 	ENDPROC
 

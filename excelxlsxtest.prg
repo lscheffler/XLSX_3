@@ -1,9 +1,7 @@
-PUBLIC loExcel   && to keep it from being destroyed and closing the cursors
+*PUBLIC loExcel   && to keep it from being destroyed and closing the cursors
 LOCAL lnTime, lnWb, lnSh, lnRow, lnCol
 loExcel = NEWOBJECT("VFPxWorkbookXLSX", "VFPxWorkbookXLSX.vcx")
 loExcel.Demo()
-
-?loExcel.Demo()
 
 *loExcel.DeleteAllWorkbooks()
 
@@ -18,7 +16,7 @@ loExcel.Demo()
 *	DEBUGOUT "Writing First Time Test Workbook"
 * 	lnSh = loExcel.AddSheet(lnWb, "Test Sheet 1")
 * 	lnTime = SECONDS()
-*	FOR lnRow=1 TO 1000
+*	FOR lnRow=1 TO 10000
 *		FOR lnCol=1 TO 5
 *			loExcel.SetCellValue(lnWb, lnSh, lnRow, lnCol, SYS(2015))
 *		ENDFOR
@@ -30,5 +28,4 @@ loExcel.Demo()
 * 	loExcel.SaveWorkbook(lnWb)
 *	DEBUGOUT "SaveWorkbook:", SECONDS()-lnTime
 *ENDIF
-
 *SET DEBUGOUT TO

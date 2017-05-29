@@ -19,6 +19,11 @@
 #DEFINE LIMITS_MAX_FORMULA_LENGTH        8192
 #DEFINE LIMITS_MAX_SH_NAME               30
 
+#DEFINE INSERT_BEFORE                    "BEFORE"
+#DEFINE INSERT_AFTER                     "AFTER"
+#DEFINE INSERT_RIGHT                     "RIGHT"
+#DEFINE INSERT_LEFT                      "LEFT"
+
 #DEFINE START_NUMERIC_FORMAT_ID          165
 
 #DEFINE SCOPE_WB_NAMED_RANGE             0                           && Scope of named range - workbook
@@ -197,6 +202,17 @@
 #DEFINE DATA_TYPE_TIME                   "M"
 #DEFINE DATA_TYPE_PERCENT                "P"
 #DEFINE DATA_TYPE_LOGICAL                "L"
+
+#DEFINE FIELD_TYPE_DATE                   "D"
+#DEFINE FIELD_TYPE_DATETIME               "T"
+#DEFINE FIELD_TYPE_CHAR                   "C"
+#DEFINE FIELD_TYPE_INT                    "I"
+#DEFINE FIELD_TYPE_FLOAT                  "F"
+#DEFINE FIELD_TYPE_CURRENCY               "Y"
+#DEFINE FIELD_TYPE_LOGICAL                "L"
+#DEFINE FIELD_TYPE_DOUBLE                 "B"
+#DEFINE FIELD_TYPE_MEMO                   "M"
+#DEFINE FIELD_TYPE_NUMERIC                "N"
 
 #DEFINE BORDER_LEFT                      1
 #DEFINE BORDER_RIGHT                     2
