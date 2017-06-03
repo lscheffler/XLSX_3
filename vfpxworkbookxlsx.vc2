@@ -240,7 +240,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultfont = Calibri		&& Workbook Default Font
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 23		&& Release version of Class ***Integer
+	excelxlsxrelease = 24		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -706,7 +706,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				RETURN False
 		
 			CASE PCOUNT() = 3
-				tnBColor = RGB(255,255,255)
+				tnBColor = tnFColor
 				tcPatternType = FILL_STYLE_SOLID
 		
 			CASE PCOUNT() = 4
@@ -724,11 +724,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				tnBColor = FLOOR(tnBColor)
 				lnBIndex = 0
 			ELSE
-				tnBColor = RGB(0, 0, 0)
-				lnBIndex = 64
-			ENDIF
-			IF VARTYPE(tnBColor) != 'N'
-				tnBColor = RGB(255,255,255)
+				tnBColor = tnFColor
+				lnBIndex = lnFIndex
 			ENDIF
 			IF VARTYPE(tcPatternType) != "C" .OR. EMPTY(tcPatternType)
 				tcPatternType = FILL_STYLE_SOLID
@@ -5724,7 +5721,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
 				FOR lnCol=1 TO lnFldCnt
 					FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + '1" t="inlineStr">')
-					FWRITE(lhFile, '<is><t>' + taFields[lnCol, 3] + '</t></is></c>')
+					FWRITE(lhFile, '<is><t>' + taFields[lnCol, 2] + '</t></is></c>')
 				ENDFOR
 				FWRITE(lhFile, '</row>')
 			
@@ -5756,7 +5753,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			
 			FINALLY
 				FCLOSE(lhFile)
-				STRTOFILE(FILETOSTR(lcFileName), lcFileName, 4)      && Save as UTF-8
+				STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
 			ENDTRY
 			IF llError
 				RETURN False
@@ -7934,15 +7931,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 			CASE VARTYPE(txCellValue) = DATA_TYPE_CHAR
 				txCellValue = ALLTRIM(txCellValue)
-				txCellValue = STRTRAN(txCellValue, CHR(145), CHR(226)+CHR(128)+CHR(152))
-				txCellValue = STRTRAN(txCellValue, CHR(146), CHR(226)+CHR(128)+CHR(153))
-				txCellValue = STRTRAN(txCellValue, CHR(147), CHR(226)+CHR(128)+CHR(156))
-				txCellValue = STRTRAN(txCellValue, CHR(148), CHR(226)+CHR(128)+CHR(157))
-		
-				txCellValue = STRTRAN(txCellValue, CHR(169), CHR(194)+CHR(169))
-				txCellValue = STRTRAN(txCellValue, CHR(174), CHR(194)+CHR(174))
-		
-				txCellValue = CHRTRAN(txCellValue, CHR(150)+CHR(151), CHR(45)+CHR(45))
 				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
 				FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is></c>')
 		
