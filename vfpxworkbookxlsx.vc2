@@ -141,6 +141,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: removeworkingdirectories		&& Removes the working directories
 		*m: renamesheet		&& Renames the selected sheet
 		*m: resetcolumnwidth		&& Resets the column width to default
+		*m: saveasutf8		&& Saves the file as a UTF-8
 		*m: savegridtoworkbook		&& Saves the selected grid to a workbook
 		*m: savegridtoworkbookex		&& Saves the passed grid to a workbook without adding the content to the internal cursors
 		*m: savetabletoworkbook		&& Saves the table passed (alias) as a workbook sheet
@@ -192,6 +193,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: ttoc3		&& Equlivalent of TTOC() function for pre VFP9 support
 		*m: unfreezepanes		&& Removes the pane freeze from the sheet
 		*m: unmergedcells		&& Unmerges merged cells
+		*m: writeasinlinestring		&& Writes the value as an inlineStr value
 		*m: writedirectcellvalue		&& Writes the cell value directly to the sheets xml
 		*m: writedirectxmls		&& Writes the workbook XMLs for direct table/grid to workbook output
 		*m: writerelationshipsxml		&& Writes the relationships xml file
@@ -206,6 +208,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*p: debug		&& Sets debugging mode ***Boolean
 		*p: declarewinapi		&& Flag to execute the DeclareDLL method in the Init() ***Boolean
 		*p: defaultfont		&& Workbook Default Font
+		*p: defaultfontsize		&& Default font size ***Integer
 		*p: defaultsheetname		&& Default sheet name (language specific)
 		*p: errorlevelid		&& Error level Id ***Integer
 		*p: excelxlsxrelease		&& Release version of Class ***Integer
@@ -238,9 +241,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	debug = .F.		&& Sets debugging mode ***Boolean
 	declarewinapi = .T.		&& Flag to execute the DeclareDLL method in the Init() ***Boolean
 	defaultfont = Calibri		&& Workbook Default Font
+	defaultfontsize = 11		&& Default font size ***Integer
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 24		&& Release version of Class ***Integer
+	excelxlsxrelease = 25		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -252,6 +256,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	Visible = .F.
 	Width = 129
 	_memberdata = <VFPData>
+		<memberdata name="defaultfontsize" type="property" display="DefaultFontSize"/>
 		<memberdata name="cellrefasciitoindex" type="method" display="CellRefAsciiToIndex"/>
 		<memberdata name="getchecksum" type="method" display="GetCheckSum"/>
 		<memberdata name="getstringrecord" type="method" display="GetStringRecord"/>
@@ -259,8 +264,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="insertcell" type="method" display="InsertCell"/>
 		<memberdata name="insertcolumn" type="method" display="InsertColumn"/>
 		<memberdata name="insertrow" type="method" display="InsertRow"/>
+		<memberdata name="saveasutf8" type="method" display="SaveAsUTF8"/>
 		<memberdata name="savegridtoworkbookex" type="method" display="SaveGridToWorkbookEx"/>
 		<memberdata name="savetabletoworkbookex" type="method" display="SaveTableToWorkbookEx"/>
+		<memberdata name="writeasinlinestring" type="method" display="WriteAsInLineString"/>
 		<memberdata name="writedirectcellvalue" type="method" display="WriteDirectCellValue"/>
 		<memberdata name="writedirectxmls" type="method" display="WriteDirectXMLs"/>
 		</VFPData>		&& XML Metadata for customizable properties
@@ -1214,7 +1221,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			INSERT INTO xl_workbooks (wbname, filepath, fullname) VALUES (lcWBName, lcPath, PADR(UPPER(tcName), 240, "_"))
 		
 			lnWB = xl_workbooks.workbook
-			this.SetDefaultFont(lnWB, this.DefaultFont, 11)
+			this.SetDefaultFont(lnWB, this.DefaultFont, this.DefaultFontSize)        && Change recommended by Doug Hennig; 2017-06-12
 			this.SetDefaultBorder(lnWB, BORDER_STYLE_NONE)
 		
 			INSERT INTO xl_relationships (workbook, relid, reltype, target) VALUES (lnWB, 1, "styles", "styles.xml")
@@ -4452,7 +4459,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				loCellFormat.StringNdx = CAST(loCellFormat.CellVal AS I)
 				loCellFormat.CellVal   = "StringValue"
 				loCellFormat.DataType  = DATA_TYPE_CHAR
-			
+				
+			CASE lcCellType == "inlineStr"
+				loCellFormat.StringNdx = this.AddStringValue(tnWB, loCellFormat.CellVal, False)
+				loCellFormat.CellVal   = "StringValue"
+				loCellFormat.DataType  = DATA_TYPE_CHAR
+		
 			CASE EMPTY(loCellFormat.CellVal)
 				RETURN loCellFormat
 		
@@ -4520,6 +4532,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 							lcDecNbr   = IIF(lnNdx=0, "", SUBSTR(loCellFormat.CellVal, lnNdx+1))                     && Bug fix provide by Dan Goodwin from VFPx
 							loCellFormat.CellVal  = lcWholeNbr + "." + PADR(lcDecNbr, 17, "0")
 							loCellFormat.DataType = DATA_TYPE_DATETIME
+		
+						CASE xl_cellxfs.numFmtId = 49                                            && Numeric formatted as text
+							loCellFormat.StringNdx = this.AddStringValue(tnWB, loCellFormat.CellVal, False)
+							loCellFormat.CellVal   = "StringValue"
+							loCellFormat.DataType  = DATA_TYPE_CHAR
 		
 						CASE SEEK(BINTOC(tnWB)+BINTOC(xl_cellxfs.numFmtId), "xl_numfmts", "id")  && Determine based on custom format
 							lcFormatCode = ALLTRIM(xl_numfmts.formatcode)
@@ -4618,6 +4635,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LOCAL lcStrings, lcString, lnNode, lcRichTextRun, lcText, lnIndex, llFBold, llFItalic, loException, lcT
 		LOCAL lnFColor, lcFName, lnFSize, lcULine, llStrkThr, lcFVPos, lnTheme, lnTint, lnIndexed, lcRunPrp
 		LOCAL lnR, lcRText, lcRunProp, lcColor, llPrsvSp, llFormatted, llSuccess, lhFile, lcSharedStringFile, lnSize
+		LOCAL lcStringXml, lcCheckSum
 		
 		RAISEEVENT(this, "OnShowStatusMessage", 1, 1)
 		TRY
@@ -4689,8 +4707,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDDO
 					llPrsvSp = False
 				ENDIF
+				lcStringXml = this.GetXMLString(lcText)
+				lcCheckSum  = this.GetCheckSum(lcText)
+		
 				INSERT INTO xl_strings (id, workbook, checksum, stringxml, stringval, presvspace, formatted) ;
-					VALUES (lnNode-1, tnWB, this.GetCheckSum(tcString), lcText, this.GetStringXML(lcText), llPrsvSp, llFormatted)
+					VALUES (lnNode-1, tnWB, lcCheckSum, lcText, lcStringXml, llPrsvSp, llFormatted)
 		
 				lnNode = lnNode + 1
 				lcString = this.GetNodeElement(lcStrings, 'si', lnNode)
@@ -5279,9 +5300,15 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
+	PROTECTED PROCEDURE SaveAsUTF8		&& Saves the file as a UTF-8
+		LPARAMETERS tcFileName
+		STRTOFILE(STRCONV(FILETOSTR(tcFileName), 9), tcFileName, 4)
+	ENDPROC
+
 	PROCEDURE SaveGridToWorkbook		&& Saves the selected grid to a workbook
 		LPARAMETERS toGrid, txWB, tlFreeze, tlSaveWB, tcSheetName
-		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, lnRowCount
+		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, loColumn, lnStyle
+		LOCAL ARRAY laRowCount[1]
 		loReturn = CREATEOBJECT("Empty")
 		ADDPROPERTY(loReturn, "Workbook",  0)
 		ADDPROPERTY(loReturn, "Sheet", 0)
@@ -5320,7 +5347,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				ENDIF
 		
 			CASE VARTYPE(txWB) = "N"
-				IF SEEK(BINTOC(tnWB), "xl_workbooks", "workbook")
+				IF SEEK(BINTOC(txWB), "xl_workbooks", "workbook")
 					lnWB = txWB
 				ELSE
 					RETURN loReturn
@@ -5335,31 +5362,47 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				lcAlias = JUSTSTEM(toGrid.RecordSource)
 		
 		*-*		Get the record count and display a status window
-				SELECT COUNT(*) FROM &lcAlias INTO CURSOR xl_count
-				lnRowCount = xl_count.cnt
-				USE IN SELECT('xl_count')
-				RAISEEVENT(this, "OnShowStatusMessage", 3, 0, lnRowCount)
+				SELECT COUNT(*) FROM &lcAlias INTO ARRAY laRowCount
+				RAISEEVENT(this, "OnShowStatusMessage", 3, 0, laRowCount[1])
 		
-				FOR lnCol=1 TO toGrid.ColumnCount
-					IF toGrid.HeaderHeight > 0                               && Change recommendation by Doug Hennig (if no headers, then no output)
-						this.SetCellValue(lnWB, lnSh, 1, lnCol, toGrid.Columns(lnCol).Header1.Caption)
-					ENDIF
-					this.SetColumnWidth(lnWB, lnSh, lnCol, this.ConvertPixelsToExcelUnits(toGrid.Columns(lnCol).Width))
-				ENDFOR
+		*-*		Add the header row if defined and set the column widths; get the column font info
 				IF toGrid.HeaderHeight > 0                                   && Change recommendation by Doug Hennig (if no headers, start in first row)
 					lnRow = 1
+					FOR lnCol=1 TO toGrid.ColumnCount
+						loColumn = toGrid.Columns(lnCol)
+						this.SetCellValue(lnWB, lnSh, 1, lnCol, loColumn.Header1.Caption)
+						this.SetColumnWidth(lnWB, lnSh, lnCol, this.ConvertPixelsToExcelUnits(loColumn.Width))
+					ENDFOR
 				ELSE
 					lnRow = 0
+					FOR lnCol=1 TO toGrid.ColumnCount
+						loColumn = toGrid.Columns(lnCol)
+						this.SetColumnWidth(lnWB, lnSh, lnCol, this.ConvertPixelsToExcelUnits(loColumn.Width))
+					ENDFOR
 				ENDIF
+		*-*		Add the cell data values
 				SELECT &lcAlias
 				SCAN
 					lnRow = lnRow + 1
 					RAISEEVENT(this, "OnShowStatusMessage", 3, lnRow)
 					FOR lnCol=1 TO toGrid.ColumnCount
-						lcField = toGrid.Columns(lnCol).ControlSource
+						loColumn = toGrid.Columns(lnCol)
+						lcField  = loColumn.ControlSource
 						this.SetCellValue(lnWB, lnSh, lnRow, lnCol, &lcField)
 					ENDFOR
 				ENDSCAN
+		*-*		Set the cell style formatting
+				FOR lnCol=1 TO toGrid.ColumnCount
+					loColumn = toGrid.Columns(lnCol)
+					lnStyle  = this.CreateFormatStyle(lnWB)
+					IF this.DefaultFont != loColumn.FontName .OR. this.DefaultFontSize != loColumn.FontSize   && Change recommended by Doug Hennig; 2017-06-12
+						this.AddStyleFont(lnWB, lnStyle, loColumn.FontName, loColumn.FontSize)
+					ELSE
+						this.AddStyleFont(lnWB, lnStyle, this.DefaultFont, this.DefaultFontSize)
+					ENDIF
+					this.SetCellStyleRange(lnWB, lnSh, 1, lnCol, laRowCount[1]+1, lnCol, lnStyle)
+				ENDFOR
+		*-*		Freeze the first row if specified
 				IF tlFreeze
 					this.FreezePanes(lnWB, lnSh, 1, 0)
 				ENDIF
@@ -5376,7 +5419,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROCEDURE SaveGridToWorkbookEx		&& Saves the passed grid to a workbook without adding the content to the internal cursors
 		LPARAMETERS toGrid, tcFileName, tlFreeze, tcSheetName
-		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentry, lxCellValue
+		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentury, lxCellValue
 		LOCAL lnFldCnt, lnColWidth
 		llError = False
 		DO CASE
@@ -5443,8 +5486,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				IF toGrid.HeaderHeight > 0                                       && Change recommendation by Doug Hennig (if no headers, then no output)
 					FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
 					FOR lnCol=1 TO lnFldCnt
-						FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + '1" t="inlineStr">')
-						FWRITE(lhFile, '<is><t>' + toGrid.Columns(lnCol).Header1.Caption + '</t></is></c>')
+						this.WriteAsInLineString(lhFile, 1, lnCol, toGrid.Columns(lnCol).Header1.Caption)
 					ENDFOR
 					FWRITE(lhFile, '</row>')
 					lnRow = 1
@@ -5453,7 +5495,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				ENDIF
 		
 		*-*		Write the grid field values to cells
-				lcSETCentry = SET("CENTURY")
+				lcSETCentury = SET("CENTURY")
 				SET CENTURY ON
 				SELECT &lcAlias
 				SCAN
@@ -5465,7 +5507,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDFOR
 					FWRITE(lhFile, '</row>')
 				ENDSCAN
-				SET CENTURY &lcSETCentry
+				SET CENTURY &lcSETCentury
 		
 		*-*		End the sheet cell data values and worksheet
 				FWRITE(lhFile, '</sheetData>')
@@ -5480,7 +5522,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 			FINALLY
 				FCLOSE(lhFile)
-				STRTOFILE(FILETOSTR(lcFileName), lcFileName, 4)                  && Save as UTF-8
+				this.SaveAsUTF8(lcFileName)
 			ENDTRY
 			IF llError
 				RETURN False
@@ -5498,7 +5540,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROCEDURE SaveTableToWorkbook		&& Saves the table passed (alias) as a workbook sheet
 		LPARAMETERS tcAlias, tnWB, tlFreeze, tlSaveWB, tcSheetName
 		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, lnFldCnt, llError, llOpenedTbl, loException, lcCurAlias, loReturn
-		LOCAL ARRAY laFields[1]
+		LOCAL lnNdx, lcCaption
+		LOCAL ARRAY laFields[1], laRowCount[1]
 		loReturn = CREATEOBJECT("Empty")
 		ADDPROPERTY(loReturn, "Workbook",  0)
 		ADDPROPERTY(loReturn, "Sheet", 0)
@@ -5564,16 +5607,24 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			lnSh = this.AddSheet(lnWB, tcSheetName)
 			IF lnSh > 0
 		*-*		Get the record count and display a status window
-				SELECT COUNT(*) FROM &lcAlias INTO CURSOR xl_count
-				lnRowCount = xl_count.cnt
-				USE IN SELECT('xl_count')
-				RAISEEVENT(this, "OnShowStatusMessage", 3, 0, lnRowCount)
+				SELECT COUNT(*) FROM &lcAlias INTO ARRAY laRowCount
+				RAISEEVENT(this, "OnShowStatusMessage", 3, 0, laRowCount[1])
 		
 				SELECT &lcAlias
 				lnFldCnt = AFIELDS(laFields, lcAlias)
+				FOR lnNdx=1 TO lnFldCnt
+					TRY
+						lcCaption = DBGETPROP(lcAlias + "." + laFields[lnNdx, 1], "FIELD", "CAPTION")
+						laFields[lnNdx, 3] = IIF(EMPTY(lcCaption), laFields[lnNdx, 1], lcCaption)
+		
+					CATCH TO loException
+						laFields[lnNdx, 3] = laFields[lnNdx, 1]
+					ENDTRY
+				ENDFOR
+				
 		*-*		Place field names in the first row
 				FOR lnCol=1 TO lnFldCnt
-					this.SetCellValue(lnWb, lnSh, 1, lnCol, laFields[lnCol, 1])
+					this.SetCellValue(lnWb, lnSh, 1, lnCol, laFields[lnCol, 3])
 				ENDFOR
 		*-*		Populate next rows with data
 				lnRow = 0
@@ -5620,7 +5671,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROCEDURE SaveTableToWorkbookEx		&& Creates a new workbook from a table; direct write to XLSX file without loading internal cursors
 		LPARAMETERS tcAlias, tcXlsxName, taFields, tlFreeze, tcSheetName
 		LOCAL lcCurAlias, llOpenedTbl, lcAlias, llError, loException, lhFile, lnCol, lcRowDefHt
-		LOCAL lnFldCnt, lnRow, lxCellValue, lcTempPath, lcFileName, lcSETCentry
+		LOCAL lnFldCnt, lnRow, lxCellValue, lcTempPath, lcFileName, lcSETCentry, lcCaption
 		EXTERNAL ARRAY taFields
 		llError = False
 		DO CASE
@@ -5672,7 +5723,13 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			taFields = ""
 			lnFldCnt = AFIELDS(taFields, lcAlias)
 			FOR lnCol=1 TO lnFldCnt
-				taFields[lnCol, 2] = taFields[lnCol, 1]
+				TRY
+					lcCaption = DBGETPROP(lcAlias + "." + taFields[lnCol, 1], "FIELD", "CAPTION")
+					taFields[lnCol, 2] = IIF(EMPTY(lcCaption), taFields[lnCol, 1], lcCaption)
+		
+				CATCH TO loException
+					taFields[lnCol, 2] = taFields[lnCol, 1]
+				ENDTRY
 			ENDFOR
 		ELSE	
 			lnFldCnt = ALEN(taFields, 1)
@@ -5753,7 +5810,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			
 			FINALLY
 				FCLOSE(lhFile)
-				STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
+				this.SaveAsUTF8(lcFileName)
 			ENDTRY
 			IF llError
 				RETURN False
@@ -6810,8 +6867,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		lnNumFmtId  = 0
 		lcSetPoint  = SET("POINT")
 		lcSeparator = SET("SEPARATOR")
-		SET POINT TO "."
-		SET SEPARATOR TO ","
+		IF lcSetPoint != "."                        && Change recommended by Doug Hennig; 2017-06-12
+			SET POINT TO "."
+			SET SEPARATOR TO ","
+		ENDIF
 		DO CASE
 			CASE VARTYPE(txCellValue) = DATA_TYPE_LOGICAL
 				lcDataType  = DATA_TYPE_LOGICAL
@@ -6934,8 +6993,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		IF !EMPTY(lcAlias)
 			SELECT &lcAlias
 		ENDIF
-		SET POINT TO (lcSetPoint)
-		SET SEPARATOR TO (lcSeparator)
+		IF lcSetPoint != "."                        && Change recommended by Doug Hennig; 2017-06-12
+			SET POINT TO (lcSetPoint)
+			SET SEPARATOR TO (lcSeparator)
+		ENDIF
 		RETURN True
 	ENDPROC
 
@@ -7305,7 +7366,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		lcAlias = ALIAS()
 		DO CASE
 			CASE PCOUNT() = 2
-				tnSize    = 0
+				tnSize    = 11
 				tlBold    = False
 				tlItalic  = False
 				tnColor   = 0
@@ -7909,33 +7970,53 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
+	PROTECTED PROCEDURE WriteAsInLineString		&& Writes the value as an inlineStr value
+		LPARAMETERS thFile, tnRow, tnCol, txCellValue
+		FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+		IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
+			FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is>')
+		ELSE
+			FWRITE(thFile, '<is>')
+			FWRITE(thFile, '<r>')
+			FWRITE(thFile, '<rPr>')
+			FWRITE(thFile, '<sz val="' + TRANSFORM(this.DefaultFontSize) + '"/>')
+			FWRITE(thFile, '<rFont val="' + this.DefaultFont + '"/>')
+			FWRITE(thFile, '</rPr>')
+			FWRITE(thFile, '<t>' + this.GetXMLString(txCellValue) + '</t>')
+			FWRITE(thFile, '</r>')
+			FWRITE(thFile, '</is>')
+		ENDIF
+		FWRITE(thFile, '</c>')
+	ENDPROC
+
 	PROTECTED PROCEDURE WriteDirectCellValue		&& Writes the cell value directly to the sheets xml
 		LPARAMETERS thFile, tnRow, tnCol, txCellValue
 		DO CASE
+			CASE ISNULL(txCellValue)
+				RETURN
+		
+			CASE INLIST(VARTYPE(txCellValue), "C", "D", "T") .AND. EMPTY(txCellValue)
+				RETURN
+		
 			CASE VARTYPE(txCellValue) = DATA_TYPE_DATE
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>' + TRANSFORM(txCellValue) + '</t></is></c>')
+				this.WriteAsInLineString(thFile, tnRow, tnCol, TRANSFORM(txCellValue))
 		
 			CASE VARTYPE(txCellValue) = DATA_TYPE_DATETIME
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>' + TRANSFORM(txCellValue) + '</t></is></c>')
+				this.WriteAsInLineString(thFile, tnRow, tnCol, TTOC(txCellValue))
 		
 			CASE VARTYPE(txCellValue) = DATA_TYPE_LOGICAL
 				txCellValue = IIF(txCellValue, GETWORDNUM(this.TrueFalseValue, 1, "|"), GETWORDNUM(this.TrueFalseValue, 2, "|"))
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is></c>')
+				this.WriteAsInLineString(thFile, tnRow, tnCol, txCellValue)
 		
 			CASE VARTYPE(txCellValue) = DATA_TYPE_CURRENCY
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '">')
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="n">')
 				FWRITE(thFile, '<v>' + TRANSFORM(MTON(txCellValue)) + '</v></c>')
 		
 			CASE VARTYPE(txCellValue) = DATA_TYPE_CHAR
-				txCellValue = ALLTRIM(txCellValue)
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is></c>')
+				this.WriteAsInLineString(thFile, tnRow, tnCol, ALLTRIM(txCellValue))
 		
 			CASE INLIST(VARTYPE(txCellValue), DATA_TYPE_INT, DATA_TYPE_FLOAT)
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '">')
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="n">')
 				FWRITE(thFile, '<v>' + TRANSFORM(txCellValue) + '</v></c>')
 		
 			OTHERWISE
@@ -8006,7 +8087,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDIF
 			FWRITE(lhFile, '</Properties>')
 			FCLOSE(lhFile)
-			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
+			this.SaveAsUTF8(lcFileName)
 		
 		*-*	Save the core XML
 			lcFileName = tcPath + "docProps\core.xml"
@@ -8042,7 +8123,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDIF
 			FWRITE(lhFile, '</cp:coreProperties>')
 			FCLOSE(lhFile)
-			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
+			this.SaveAsUTF8(lcFileName)
 		
 		*-*	Save the styles XML
 			lcFileName = tcPath + "xl\styles.xml"
@@ -8062,7 +8143,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			FWRITE(lhFile, '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>')
 			FWRITE(lhFile, '</styleSheet>')
 			FCLOSE(lhFile)
-			STRTOFILE(FILETOSTR(lcFileName), lcFileName, 4)      && Save as UTF-8
+			this.SaveAsUTF8(lcFileName)
 		
 		*-*	Write the workbook XML
 			lcFileName = tcPath + "xl\workbook.xml"
@@ -8080,7 +8161,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			FWRITE(lhFile, '<calcPr calcId="0"/>')
 			FWRITE(lhFile, '</workbook>')
 			FCLOSE(lhFile)
-			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)          && Save as UTF-8
+			this.SaveAsUTF8(lcFileName)
 		
 		CATCH TO loException
 			SET STEP ON
@@ -8112,7 +8193,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDSCAN
 		
 			FWRITE(lhFile, '</Relationships>')
-			FCLOSE(lhFile)
 			llSuccess = True
 		
 		CATCH TO loException
@@ -8120,6 +8200,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			llSuccess = False
 			this.ErrorLevelId = 16
 			RAISEEVENT(this, "OnShowErrorMessage", 16, "Unable to create workbook.xml.rels")
+		
+		FINALLY
+			FCLOSE(lhFile)
 		ENDTRY
 		RETURN llSuccess
 	ENDPROC
@@ -8127,12 +8210,13 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROTECTED PROCEDURE WriteSheetXMLs		&& Writes the Sheet XML files
 		LPARAMETERS tnWB, tnSheetNbr, tcPath
 		LOCAL llSuccess, lcAlias, lhFile, lcRow, lnMinCol, lnMaxCol, lnWidth, lnLastRow, lcDyDescent
-		LOCAL lcRowDefHt
+		LOCAL lcRowDefHt, lcFileName
 		*-*	Write the sheet XML
 		lcAlias = ALIAS()
 		*-*	Write the sheet
 		TRY
-			lhFile = FCREATE(tcPath + "xl\worksheets\sheet" + TRANSFORM(tnSheetNbr) + ".xml")
+			lcFileName = tcPath + "xl\worksheets\sheet" + TRANSFORM(tnSheetNbr) + ".xml"
+			lhFile = FCREATE(lcFileName)
 			IF lhFile < 0
 				THROW
 			ENDIF
@@ -8645,6 +8729,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		FINALLY
 			FCLOSE(lhFile)
+			this.SaveAsUTF8(lcFileName)
 		ENDTRY
 		IF !EMPTY(lcAlias)
 			SELECT &lcAlias
@@ -9078,9 +9163,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		*-*	Close the style sheet
 			FWRITE(lhFile, '</styleSheet>')
-			FCLOSE(lhFile)
 			llSuccess = True
-			STRTOFILE(FILETOSTR(lcFileName), lcFileName, 4)      && Save as UTF-8
 		
 		CATCH TO loException
 			SET STEP ON
@@ -9088,6 +9171,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			this.ErrorLevelId = 17
 			RAISEEVENT(this, "OnShowErrorMessage", 17, "Unable to create styles.xml")
 		
+		FINALLY
+			FCLOSE(lhFile)
+			this.SaveAsUTF8(lcFileName)
 		ENDTRY
 		IF !EMPTY(lcAlias)
 			SELECT &lcAlias
@@ -9302,8 +9388,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*-*	Close the workbook
 			FWRITE(lhFile, '<calcPr calcId="0"/>')
 			FWRITE(lhFile, '</workbook>')
-			FCLOSE(lhFile)
-			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
 		
 			llSuccess = True
 		
@@ -9311,6 +9395,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			FCLOSE(lhFile)
 			SET STEP ON
 			llSuccess = False
+		
+		FINALLY
+			FCLOSE(lhFile)
+			this.SaveAsUTF8(lcFileName)
 		ENDTRY
 		RETURN llSuccess
 	ENDPROC
