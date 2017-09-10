@@ -232,7 +232,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*p: _memberdata		&& XML Metadata for customizable properties
 	*</DefinedPropArrayMethod>
 
-	PROTECTED Destroy,Init
+	PROTECTED destroy,init
 	AutoSize = .T.
 	Caption = "clsVFPxWorkbookXLSX"
 	codepage = 0		&& CodePage to use for the Strings cursor
@@ -244,7 +244,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultfontsize = 11		&& Default font size ***Integer
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 26		&& Release version of Class ***Integer
+	excelxlsxrelease = 27		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -272,7 +272,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="writedirectxmls" type="method" display="WriteDirectXMLs"/>
 		</VFPData>		&& XML Metadata for customizable properties
 	
-	PROTECTED PROCEDURE addclassdefinednumericformats		&& Adds pre-defined numeric cell formats
+	PROTECTED PROCEDURE AddClassDefinedNumericFormats		&& Adds pre-defined numeric cell formats
 		LPARAMETERS tnWB, tnFormatId
 		LOCAL llAdded, lcTextFormat, lcXMLFormat
 		DO CASE
@@ -317,7 +317,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llAdded
 	ENDPROC
 
-	PROCEDURE addcustomnumericformat		&& Adds a new custom defined numeric format
+	PROCEDURE AddCustomNumericFormat		&& Adds a new custom defined numeric format
 		LPARAMETERS tnWB, tcPosFormat, tcNegFormat, tcZeroFormat, tcTextFormat, tlApplyDec
 		LOCAL lnId, lcFormatCode, lnNdx, lcSetPoint, lcSeparator
 		IF VARTYPE(tcPosFormat) != "C"
@@ -404,7 +404,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnId
 	ENDPROC
 
-	PROCEDURE addindexcolor		&& Adds a new indexed color definition
+	PROCEDURE AddIndexColor		&& Adds a new indexed color definition
 		LPARAMETERS tnWB, tnRGBColor
 		LOCAL lnIndexId, lcHexColor
 		IF PCOUNT() != 2 .OR. VARTYPE(tnRGBColor) != "N"
@@ -420,7 +420,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnIndexId
 	ENDPROC
 
-	PROCEDURE addinlinefontobject		&& Adds an object for setting the inline formatting of cell text
+	PROCEDURE AddInLineFontObject		&& Adds an object for setting the inline formatting of cell text
 		LPARAMETERS toInline, tnBeg, tnLen, tcFontName, tnFontSize, tnFontColor, tlFontBold, tlFontItalic, tcULine, tlStrkThru, tlSubscript, tlSuperscript
 		LOCAL loCharacter
 		IF PCOUNT() < 4
@@ -502,7 +502,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN toInline
 	ENDPROC
 
-	PROCEDURE addmrucolor		&& Adds a custom defined MRU color to the workbook
+	PROCEDURE AddMruColor		&& Adds a custom defined MRU color to the workbook
 		LPARAMETERS tnWB, tnRGBColor
 		LOCAL lnIndexId, lcHexColor
 		IF PCOUNT() != 2 .OR. VARTYPE(tnRGBColor) != "N"
@@ -518,7 +518,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnIndexId
 	ENDPROC
 
-	PROCEDURE addnamedrange		&& Adds a name range to the workbook
+	PROCEDURE AddNamedRange		&& Adds a name range to the workbook
 		LPARAMETERS tnWB, tnSheet, tcName, tnScope, tcComment, tnBegRow, tnBegCol, tnEndRow, tnEndCol
 		LOCAL lcRangeName
 		IF PCOUNT() < 8
@@ -552,7 +552,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcRangeName
 	ENDPROC
 
-	PROCEDURE addnumericformat		&& Adds a numeric format expression to be used
+	PROCEDURE AddNumericFormat		&& Adds a numeric format expression to be used
 		LPARAMETERS tnWB, tcFormatCode
 		LOCAL lcPosCode, lcNegCode, lcZerCode
 		IF PCOUNT() < 2
@@ -570,7 +570,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN this.AddCustomNumericFormat(tnWB, lcPosCode, lcNegCode, lcZerCode)
 	ENDPROC
 
-	PROCEDURE addsheet		&& Adds a new sheet to the workbook
+	PROCEDURE AddSheet		&& Adds a new sheet to the workbook
 		LPARAMETERS tnWB, tcSheetName, tnState
 		LOCAL lnShId, lnRelId
 		lnShId = 0
@@ -619,7 +619,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnShId
 	ENDPROC
 
-	PROTECTED PROCEDURE addstringvalue		&& Adds a string value to the internal cursor
+	PROTECTED PROCEDURE AddStringValue		&& Adds a string value to the internal cursor
 		LPARAMETERS tnWB, tcString, tlInLine
 		LOCAL lcStringXml, lnStringId, llPresrvSp, lcCheckSum
 		IF tlInLine
@@ -644,7 +644,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnStringId
 	ENDPROC
 
-	PROCEDURE addstyleborders		&& Adds to the cell style a border definition
+	PROCEDURE AddStyleBorders		&& Adds to the cell style a border definition
 		LPARAMETERS tnWB, tnCellXfsId, tnBorders, tcStyle, tnColor
 		LOCAL lnDiagDn, lnDiagUp, lcLStyle, lnLColor, lcRStyle, lnRColor, lcTStyle, lnTColor, lcBStyle, lnBColor
 		LOCAL lcDStyle, lnDColor, lnBorderId
@@ -705,7 +705,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstylefill		&& Adds to the cell style a fill definition
+	PROCEDURE AddStyleFill		&& Adds to the cell style a fill definition
 		LPARAMETERS tnWB, tnCellXfsId, tnFColor, tnBColor, tcPatternType
 		LOCAL lnFillId, lnFIndex, lnBIndex
 		DO CASE
@@ -757,7 +757,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstylefont		&& Adds to the cell style a font definition
+	PROCEDURE AddStyleFont		&& Adds to the cell style a font definition
 		LPARAMETERS tnWB, tnCellXfsId, tcFName, tnFSize, tlBold, tlItalic, tnFColor, tcULine, tlStrikThr, tcVPos
 		LOCAL lnFontId
 		IF PCOUNT() < 3
@@ -814,7 +814,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstylehorizalignment		&& Adds to the cell style horizontal cell alignment
+	PROCEDURE AddStyleHorizAlignment		&& Adds to the cell style horizontal cell alignment
 		LPARAMETERS tnWB, tnCellXfsId, tcHorizAlign
 		IF PCOUNT() < 3
 			RETURN False
@@ -831,7 +831,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstyleindent		&& Adds to the style indent definition
+	PROCEDURE AddStyleIndent		&& Adds to the style indent definition
 		LPARAMETERS tnWB, tnCellXfsId, tnIndent
 		IF PCOUNT() < 3
 			RETURN False
@@ -848,7 +848,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstylenumericformat		&& Adds to the style definition numeric format
+	PROCEDURE AddStyleNumericFormat		&& Adds to the style definition numeric format
 		LPARAMETERS tnWB, tnCellXfsId, tnNumFmtId
 		LOCAL lnNumFmtId
 		IF PCOUNT() < 3
@@ -882,7 +882,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstyletextrotation		&& Adds to the style definition text rotation
+	PROCEDURE AddStyleTextRotation		&& Adds to the style definition text rotation
 		LPARAMETERS tnWB, tnCellXfsId, tnRotation
 		IF PCOUNT() < 3
 			RETURN False
@@ -899,7 +899,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstylevertalignment		&& Adds to the cell style vertical cell alignment
+	PROCEDURE AddStyleVertAlignment		&& Adds to the cell style vertical cell alignment
 		LPARAMETERS tnWB, tnCellXfsId, tcVertAlign
 		IF PCOUNT() < 3
 			RETURN False
@@ -916,7 +916,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE addstylewordwrap		&& Adds to the style definition word wrap
+	PROCEDURE AddStyleWordWrap		&& Adds to the style definition word wrap
 		LPARAMETERS tnWB, tnCellXfsId, tlWordWrap
 		IF PCOUNT() < 3
 			RETURN False
@@ -933,7 +933,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE cellformatpainter		&& Copies the formatting of a source cell to other cells
+	PROCEDURE CellFormatPainter		&& Copies the formatting of a source cell to other cells
 		LPARAMETERS tnWB, tnSheet, tnSrcRow, tnSrcCol, tnBegRow, tnBegCol, tnEndRow, tnEndCol
 		LOCAL lnCellXfs, lnNumDec, llReturn, lnRow, lnCol
 		DO CASE
@@ -968,7 +968,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE cellrefasciitoindex		&& Converts a 'AA444' cell reference to the row and column index values
+	PROCEDURE CellRefAsciiToIndex		&& Converts a 'AA444' cell reference to the row and column index values
 		LPARAMETERS tcCellRef
 		LOCAL lnCellCol, lnNdx, lnCellRow, loCellRef
 		lnCellCol = this.ColumnAsciiToIndex(tcCellRef)
@@ -985,7 +985,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loCellRef
 	ENDPROC
 
-	PROCEDURE clearcellvalidation		&& Clears/deletes the named range from the workbook
+	PROCEDURE ClearCellValidation		&& Clears/deletes the named range from the workbook
 		LPARAMETERS tnWB, tcName
 		IF PCOUNT() < 2
 			RETURN False
@@ -1002,7 +1002,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE clearcellvalue		&& Clears the cell value
+	PROCEDURE ClearCellValue		&& Clears the cell value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL llReturn
 		IF this.GetCellRecord(tnWB, tnSheet, tnCellRow, tnCellCol)
@@ -1014,7 +1014,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE columnasciitoindex		&& Converts Excel Ascii column value to index value
+	PROCEDURE ColumnAsciiToIndex		&& Converts Excel Ascii column value to index value
 		LPARAMETERS tcColIndex
 		LOCAL lnIndex, lnNdx, lnChr
 		lnIndex = 0
@@ -1029,7 +1029,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnIndex
 	ENDPROC
 
-	PROCEDURE columnindextoascii		&& Gets the column ASCII code for the column index
+	PROCEDURE ColumnIndexToAscii		&& Gets the column ASCII code for the column index
 		LPARAMETERS tnCol
 		LOCAL lnRemCol, lcColumn, lnPartCol
 		IF PCOUNT() = 0 .OR. VARTYPE(tnCol) != "N"
@@ -1053,7 +1053,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcColumn
 	ENDPROC
 
-	PROTECTED PROCEDURE convertcolortohex		&& Converts a color value (integer) to Hex representation
+	PROTECTED PROCEDURE ConvertColorToHex		&& Converts a color value (integer) to Hex representation
 		LPARAMETERS tnColor
 		LOCAL lnRed, lnGreen, lnBlue, lcHexRed, lcHexGreen, lcHexBlue
 		lnRed   = this.GetRGBValues(tnColor, 'R')
@@ -1065,7 +1065,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN "FF" + UPPER(lcHexRed + lcHexGreen + lcHexBlue)
 	ENDPROC
 
-	PROTECTED PROCEDURE converthexstringtonumeric		&& ConvertHexStringToNumeric
+	PROTECTED PROCEDURE ConvertHexStringToNumeric		&& ConvertHexStringToNumeric
 		LPARAMETERS tcHexNum
 		LOCAL lcValue
 		IF EMPTY(tcHexNum)
@@ -1080,12 +1080,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN EVAL(lcValue)
 	ENDPROC
 
-	PROCEDURE convertpixelstoexcelunits		&& Converts Pixel measurement to Excel measurement
+	PROCEDURE ConvertPixelsToExcelUnits		&& Converts Pixel measurement to Excel measurement
 		LPARAMETERS tnPixels
 		RETURN tnPixels * 0.152542
 	ENDPROC
 
-	PROTECTED PROCEDURE createexcelfile		&& Creates the Excel file from the components
+	PROTECTED PROCEDURE CreateExcelFile		&& Creates the Excel file from the components
 		LPARAMETERS tcTempPath, tcFilePath, tcWBName
 		LOCAL loShell, loFolder, lcZipFile, loException, loFile, lnCountBefore, lcFile, lcZipPath, lnCount, lhFile
 		lcZipPath = ALLTRIM(tcFilePath)
@@ -1178,7 +1178,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE createformatstyle		&& Creates a new format style definition
+	PROCEDURE CreateFormatStyle		&& Creates a new format style definition
 		LPARAMETERS tnWB
 		IF PCOUNT() > 0 .AND. SEEK(BINTOC(tnWB), "xl_workbooks", "workbook")
 			lnId = this.GetNextId(tnWB, "xl_cellxfs")
@@ -1190,7 +1190,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE createinlineformattext		&& Creates an in-line text formatted definition
+	PROCEDURE CreateInLineFormatText		&& Creates an in-line text formatted definition
 		LPARAMETERS tnWB, tcCellText
 		LOCAL loInline
 		loInline = CREATEOBJECT("Empty")
@@ -1203,7 +1203,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loInline
 	ENDPROC
 
-	PROCEDURE createworkbook		&& Creates a new workbook object
+	PROCEDURE CreateWorkbook		&& Creates a new workbook object
 		LPARAMETERS tcName
 		LOCAL lcWBName, lcPath, lnWB
 		IF PCOUNT() = 1
@@ -1240,7 +1240,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnWB
 	ENDPROC
 
-	PROTECTED PROCEDURE createworkbookex		&& Internal method for creating a workbook
+	PROTECTED PROCEDURE CreateWorkbookEx		&& Internal method for creating a workbook
 		LPARAMETERS tcName
 		LOCAL lcWBName, lcPath, lnWB
 		lcWBName = JUSTSTEM(tcName)
@@ -1258,7 +1258,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnWB
 	ENDPROC
 
-	PROTECTED PROCEDURE createworkingcursors		&& Creates the working cursors for worksheet definitions
+	PROTECTED PROCEDURE CreateWorkingCursors		&& Creates the working cursors for worksheet definitions
 		IF USED('xl_strings')
 			RETURN
 		ENDIF
@@ -1451,7 +1451,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*INDEX ON BINTOC(workbook)+BINTOC(extid)+BINTOC(relid) TAG relid FOR !DELETED()
 	ENDPROC
 
-	PROTECTED PROCEDURE createworkingdirectories		&& Creates the working directories for the XML files
+	PROTECTED PROCEDURE CreateWorkingDirectories		&& Creates the working directories for the XML files
 		LOCAL lcDir, loException
 		lcDir = ADDBS(SYS(2023)) + SYS(2015)
 		TRY
@@ -1468,7 +1468,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN ADDBS(lcDir)
 	ENDPROC
 
-	PROCEDURE debugcursorstofile		&& Debugging use for saving the internal cursors to a text file
+	PROCEDURE DebugCursorsToFile		&& Debugging use for saving the internal cursors to a text file
 		LPARAMETERS tcStemName
 		LOCAL lnNumFlds, lcField, lcLineText, lnFld, lcFileName
 		LOCAL ARRAY laFields[1, 18]
@@ -1708,7 +1708,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		STRTOFILE(lcFileText, lcFileName)
 	ENDPROC
 
-	PROCEDURE debugoutput		&& Limited functions for debugging
+	PROCEDURE DebugOutput		&& Limited functions for debugging
 		LOCAL lnWb, lnSh
 		lnWb = this.CreateWorkbook("ExcelDebug.xlsx")
 		
@@ -1743,7 +1743,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		this.SaveWorkbook(lnWb)
 	ENDPROC
 
-	PROCEDURE debug_assign
+	PROCEDURE Debug_Assign
 		LPARAMETERS tlDebug
 		IF tlDebug
 			SET DEBUGOUT TO "VFPXWorkbookXLSXDebug.txt"
@@ -1751,7 +1751,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		this.Debug = tlDebug
 	ENDPROC
 
-	PROTECTED PROCEDURE declaredll		&& Declares the required support Win32 API
+	PROTECTED PROCEDURE DeclareDLL		&& Declares the required support Win32 API
 		DECLARE Sleep IN kernel32 AS apiSleep INTEGER tnTime
 		DECLARE INTEGER DeleteFile IN kernel32 AS apiDeleteFile STRING lpFileName
 		DECLARE INTEGER RemoveDirectory IN kernel32 AS apiRemoveDirectory STRING lpPathName
@@ -1759,7 +1759,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		DECLARE INTEGER ShellExecute IN Shell32 AS apiShellExecute LONG nhWnd, STRING lpAction, STRING lpFile, STRING lpParams, STRING lpDirectory, INTEGER nShowCmd
 	ENDPROC
 
-	PROCEDURE deleteallworkbooks		&& Deletes all workbooks
+	PROCEDURE DeleteAllWorkbooks		&& Deletes all workbooks
 		LOCAL loException
 		TRY
 			this.DestroyWorkingCursors()
@@ -1771,7 +1771,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDTRY
 	ENDPROC
 
-	PROCEDURE deletesheet		&& Deletes the sheet from the Workbook
+	PROCEDURE DeleteSheet		&& Deletes the sheet from the Workbook
 		LPARAMETERS tnWB, txSheet
 		LOCAL lnSheet, lxReturn
 		lxReturn = False
@@ -1801,7 +1801,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROCEDURE deleteworkbook		&& Deletes the selected workbook
+	PROCEDURE DeleteWorkbook		&& Deletes the selected workbook
 		LPARAMETERS tnWB
 		LOCAL llSuccess, lnNdx
 		TRY
@@ -1959,7 +1959,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROCEDURE demo		&& Demo for the features of this class
+	PROCEDURE Demo		&& Demo for the features of this class
 		LOCAL lnWb, lnSh1, lnRow, lnCol, lnSh2, lnSh3, lnSh4, lnCnt, lnFormat, llBoolean, lcNamedRange
 		LOCAL lnSh6, lnSh5, loInline, lnStyle1, lnStyle2, lnBorders, lcString
 		lnWb = this.CreateWorkbook("ExcelTest.xlsx")
@@ -2357,7 +2357,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROTECTED PROCEDURE derivesheetname		&& Derives the sheet name
+	PROTECTED PROCEDURE DeriveSheetName		&& Derives the sheet name
 		LPARAMETERS txWB
 		DO CASE
 			CASE VARTYPE(txWB) = "C"
@@ -2378,7 +2378,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		this.OnDestroy()
 	ENDPROC
 
-	PROTECTED PROCEDURE destroyworkingcursors		&& Destroys the working cursors
+	PROTECTED PROCEDURE DestroyWorkingCursors		&& Destroys the working cursors
 		TRY
 			USE IN SELECT('xl_strings')
 			USE IN SELECT('xl_workbooks')
@@ -2408,7 +2408,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDTRY
 	ENDPROC
 
-	PROTECTED PROCEDURE documentation		&& Documentation of the methods and properties for this class
+	PROTECTED PROCEDURE Documentation		&& Documentation of the methods and properties for this class
 		*-*
 		*-* Written by:  Vilhelm Praisach
 		*-*              Gregory Green
@@ -2459,7 +2459,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*-************************************************************************************************************************************
 	ENDPROC
 
-	PROCEDURE freezepanes		&& Freezes the panes of the sheet
+	PROCEDURE FreezePanes		&& Freezes the panes of the sheet
 		LPARAMETERS tnWB, tnSheet, tnTopRowCount, tnSideColCount
 		LOCAL lxReturn
 		DO CASE
@@ -2485,7 +2485,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE getalphanumericsplit		&& Returns the position of the alpha and numeric split
+	PROTECTED PROCEDURE GetAlphaNumericSplit		&& Returns the position of the alpha and numeric split
 		LPARAMETERS tcText
 		LOCAL lnChr
 		FOR lnChr=1 TO LEN(tcText)
@@ -2496,13 +2496,13 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN 0
 	ENDPROC
 
-	PROTECTED PROCEDURE getbordersrecord		&& Gets the border record; returns True if found, or False in not found
+	PROTECTED PROCEDURE GetBordersRecord		&& Gets the border record; returns True if found, or False in not found
 		LPARAMETERS tnWB, tcLStyle, tnLColor, tcRStyle, tnRColor, tcTStyle, tnTColor, tcBStyle, tnBColor, tcDStyle, tnDColor, tnDiagDn, tnDiagUp
 		RETURN SEEK(BINTOC(tnWB) + tcLStyle + BINTOC(tnLColor) + tcRStyle + BINTOC(tnRColor) + tcTStyle + BINTOC(tnTColor) + tcBStyle + BINTOC(tnBColor) + ;
 			   		tcDStyle + BINTOC(tnDColor) + BINTOC(tnDiagDn) + BINTOC(tnDiagUp), "xl_borders", "cellborder")
 	ENDPROC
 
-	PROCEDURE getcellalignment		&& Returns the cell alignment
+	PROCEDURE GetCellAlignment		&& Returns the cell alignment
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL loAlignInfo
 		IF PCOUNT() < 4
@@ -2518,7 +2518,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loAlignInfo
 	ENDPROC
 
-	PROCEDURE getcellborders		&& Returns the cell border info
+	PROCEDURE GetCellBorders		&& Returns the cell border info
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL loBdrInfo
 		IF PCOUNT() < 4
@@ -2564,7 +2564,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loBdrInfo
 	ENDPROC
 
-	PROCEDURE getcelldatatype		&& Returns the data type for the selected cell
+	PROCEDURE GetCellDataType		&& Returns the data type for the selected cell
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lxReturn
 		IF PCOUNT() < 4
@@ -2578,7 +2578,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROCEDURE getcellfill		&& Returns the fill info for the cell
+	PROCEDURE GetCellFill		&& Returns the fill info for the cell
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL loFillInfo
 		IF PCOUNT() < 4
@@ -2599,7 +2599,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loFillInfo
 	ENDPROC
 
-	PROCEDURE getcellfont		&& Returns the cell font settings
+	PROCEDURE GetCellFont		&& Returns the cell font settings
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL loFontInfo
 		IF PCOUNT() < 4
@@ -2621,7 +2621,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loFontInfo
 	ENDPROC
 
-	PROCEDURE getcellformula		&& Returns the cell formula expression
+	PROCEDURE GetCellFormula		&& Returns the cell formula expression
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lcFormula
 		IF PCOUNT() < 4
@@ -2634,7 +2634,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcFormula
 	ENDPROC
 
-	PROTECTED PROCEDURE getcellformulafromxml		&& Gets the cell formula from the XML node
+	PROTECTED PROCEDURE GetCellFormulaFromXML		&& Gets the cell formula from the XML node
 		LPARAMETERS tcFormula, tnCellCol
 		LOCAL lcFormula, lcShared, lnId, lcTemp, lnNdx, lcChr, lcAddExpr, lnCol, lcRef, lcRefBeg, lcRefEnd, llColRelative
 		LOCAL lnColBase, llRowRelative, lnRowBase
@@ -2736,7 +2736,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcFormula
 	ENDPROC
 
-	PROCEDURE getcellindent		&& Returns the cell indentation
+	PROCEDURE GetCellIndent		&& Returns the cell indentation
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lnIndent
 		IF PCOUNT() != 4
@@ -2750,7 +2750,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnIndent
 	ENDPROC
 
-	PROCEDURE getcellnumberformat		&& Returns the format code for the selected cell
+	PROCEDURE GetCellNumberFormat		&& Returns the format code for the selected cell
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lnNumFmtId
 		IF PCOUNT() != 4
@@ -2764,7 +2764,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnNumFmtId
 	ENDPROC
 
-	PROCEDURE getcellnumberformattext		&& Returns the selected cell numeric format as text
+	PROCEDURE GetCellNumberFormatText		&& Returns the selected cell numeric format as text
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lcFormatCode
 		IF PCOUNT() != 4
@@ -2778,12 +2778,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcFormatCode
 	ENDPROC
 
-	PROTECTED PROCEDURE getcellrecord		&& Positions to the xl_cells record; returns true if found, or false if not found
+	PROTECTED PROCEDURE GetCellRecord		&& Positions to the xl_cells record; returns true if found, or false if not found
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		RETURN SEEK(BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(tnCellRow)+BINTOC(tnCellCol), "xl_cells", "cellindex")
 	ENDPROC
 
-	PROCEDURE getcellstyle		&& Gets the cell style value
+	PROCEDURE GetCellStyle		&& Gets the cell style value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		IF PCOUNT() = 4 .AND. this.GetCellRecord(tnWB, tnSheet, tnCellRow, tnCellCol)
 			RETURN xl_cells.cellxfs
@@ -2792,7 +2792,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE getcelltextrotation		&& Gets the cell text rotation value
+	PROCEDURE GetCellTextRotation		&& Gets the cell text rotation value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lnRotation
 		IF PCOUNT() != 4
@@ -2809,7 +2809,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnRotation
 	ENDPROC
 
-	PROCEDURE getcellvalidation		&& Returns the cell validation settings
+	PROCEDURE GetCellValidation		&& Returns the cell validation settings
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL loValiation
 		loValiation = CREATEOBJECT("Empty")
@@ -2843,7 +2843,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loValiation
 	ENDPROC
 
-	PROCEDURE getcellvalue		&& Returns the value of the cell
+	PROCEDURE GetCellValue		&& Returns the value of the cell
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lxValue, lnDays, lnDecimals, lnMSec, lnTime, lnSize, lcType, loException
 		IF PCOUNT() < 4
@@ -2921,7 +2921,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxValue
 	ENDPROC
 
-	PROCEDURE getcellwordwrap		&& Returns the cell word wrap setting
+	PROCEDURE GetCellWordWrap		&& Returns the cell word wrap setting
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL lxReturn
 		IF PCOUNT() < 4
@@ -2935,7 +2935,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE getcellxfsid		&& Returns the Cell XfsId value
+	PROTECTED PROCEDURE GetCellXfsId		&& Returns the Cell XfsId value
 		LPARAMETERS tnWB, tnNumFmtId, tnFontId, tnFillId, tnBorderId, tcHAlign, tcVAlign, tnIndex, tnWrapText, tnRotation
 		LOCAL lnCellXfsId
 		IF SEEK(BINTOC(tnWB)+BINTOC(tnNumFmtId)+BINTOC(tnFontId)+BINTOC(tnFillId)+BINTOC(tnBorderId)+BINTOC(tnIndex)+BINTOC(tnWrapText)+BINTOC(tnRotation)+ALLTRIM(tcHAlign)+ALLTRIM(tcVAlign), "xl_cellxfs", "cellxfs")
@@ -2948,12 +2948,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnCellXfsId
 	ENDPROC
 
-	PROTECTED PROCEDURE getcellxfsrecord		&& Positions the record pointer to xl_cellxfs record; returns true if found, or false if not found
+	PROTECTED PROCEDURE GetCellXfsRecord		&& Positions the record pointer to xl_cellxfs record; returns true if found, or false if not found
 		LPARAMETERS tnWB, tnId
 		RETURN SEEK(BINTOC(tnWB)+BINTOC(tnId), "xl_cellxfs", "id")
 	ENDPROC
 
-	PROTECTED PROCEDURE getchecksum		&& Returns the checksum the string
+	PROTECTED PROCEDURE GetCheckSum		&& Returns the checksum the string
 		LPARAMETERS tcString
 		LOCAL lcString, lcCheckSum
 		lcString   = ALLTRIM(tcString)
@@ -2962,19 +2962,19 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcCheckSum
 	ENDPROC
 
-	PROTECTED PROCEDURE getchildnodecount		&& Returns the number of child nodes
+	PROTECTED PROCEDURE GetChildNodeCount		&& Returns the number of child nodes
 		LPARAMETERS tcNode
 		RETURN OCCURS("<", tcNode) - 2
 	ENDPROC
 
-	PROTECTED PROCEDURE getchildnodeelement		&& Returns the selected child node
+	PROTECTED PROCEDURE GetChildNodeElement		&& Returns the selected child node
 		LPARAMETERS tcNode, tnChild
 		LOCAL lcElement
 		lcElement = STREXTRACT(tcNode, '<', '>', tnChild+1, 1)
 		RETURN STREXTRACT(tcNode, '<'+lcElement+'>', '</'+lcElement+'>', 1, 5)
 	ENDPROC
 
-	PROTECTED PROCEDURE getcolumnincolrowpair		&& Returns the column (Ascii value) in a ColRow pair; i.e., returns A from A6 reference
+	PROTECTED PROCEDURE GetColumnInColRowPair		&& Returns the column (Ascii value) in a ColRow pair; i.e., returns A from A6 reference
 		LPARAMETERS tcColRow
 		LOCAL lnNdx, lcCol, lcChr
 		lcCol = ""
@@ -2988,7 +2988,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcCol
 	ENDPROC
 
-	PROCEDURE getcolumnwidth		&& Returns the column width
+	PROCEDURE GetColumnWidth		&& Returns the column width
 		LPARAMETERS tnWB, tnSheet, tnColumn
 		LOCAL lxReturn
 		IF PCOUNT() < 3
@@ -3006,17 +3006,17 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE getcolwidthkeyexpr		&& Gets the key expression for c_colwidths
+	PROTECTED PROCEDURE GetColWidthKeyExpr		&& Gets the key expression for c_colwidths
 		LPARAMETERS tnWB, tnSheet, tnColumn
 		RETURN BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(tnColumn)
 	ENDPROC
 
-	PROTECTED PROCEDURE getcursorrecord		&& Gets the specified xl_cursor record; returns true if found, false if not found
+	PROTECTED PROCEDURE GetCursorRecord		&& Gets the specified xl_cursor record; returns true if found, false if not found
 		LPARAMETERS tcCursor, tnWB, tnId
 		RETURN SEEK(BINTOC(tnWB)+BINTOC(tnId), tcCursor, "id")
 	ENDPROC
 
-	PROCEDURE getcustomnumericformat		&& Returns the format code for the specified custom numeric format
+	PROCEDURE GetCustomNumericFormat		&& Returns the format code for the specified custom numeric format
 		LPARAMETERS tnWB, tnNumFormat
 		LOCAL lxReturn
 		IF SEEK(BINTOC(tnWB)+BINTOC(tnNumFormat), "xl_numfmts", "id")
@@ -3027,7 +3027,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROCEDURE getcustompapersize		&& Gets the values for the custom paper size
+	PROCEDURE GetCustomPaperSize		&& Gets the values for the custom paper size
 		LPARAMETERS tnWB, tnSheet
 		LOCAL loReturn
 		IF PCOUNT() = 2 .AND. this.GetSheetRecord(tnWB, tnSheet)
@@ -3041,17 +3041,17 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE getformatkeyexpr		&& Gets the key expression for t_format
+	PROTECTED PROCEDURE GetFormatKeyExpr		&& Gets the key expression for t_format
 		LPARAMETERS tnNbrFmtId, tnNumDec, tnFontId, tnFillId, tnBorderId, tcHAlign, tcVAlign, tlWordWrap
 		RETURN BINTOC(tnNbrFmtId)+BINTOC(tnNumDec)+BINTOC(tnFontId)+BINTOC(tnFillId)+BINTOC(tnBorderId)+tcHAlign+tcVAlign+TRANSFORM(tlWordWrap)
 	ENDPROC
 
-	PROTECTED PROCEDURE getheaderfooterkeyexpr		&& Gets the key expression for the header footer table record
+	PROTECTED PROCEDURE GetHeaderFooterKeyExpr		&& Gets the key expression for the header footer table record
 		LPARAMETERS tnWB, tnSheet, tnPage, tnSection
 		RETURN BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(tnPage)+BINTOC(tnSection)
 	ENDPROC
 
-	PROCEDURE getinlinefontdefinition		&& Returns the inline formatting definition of cell text for each character group
+	PROCEDURE GetInLineFontDefinition		&& Returns the inline formatting definition of cell text for each character group
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL loSharedString, loInline, lcAlias, lnBegPos, lnLen, loCharacter
 		IF PCOUNT() != 4
@@ -3100,7 +3100,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loInline
 	ENDPROC
 
-	PROCEDURE getlastcolumninrow		&& Returns the last column index in the row
+	PROCEDURE GetLastColumnInRow		&& Returns the last column index in the row
 		LPARAMETERS tnWB, tnSheet, tnCellRow
 		LOCAL lnMaxCol
 		IF PCOUNT() < 3
@@ -3123,7 +3123,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnMaxCol
 	ENDPROC
 
-	PROCEDURE getlastrownumber		&& Returns the last row number in the sheet
+	PROCEDURE GetLastRowNumber		&& Returns the last row number in the sheet
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lnLastRow
 		IF PCOUNT() < 2
@@ -3145,7 +3145,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnLastRow
 	ENDPROC
 
-	PROCEDURE getmaxcolumnnumber		&& Returns the max column number for a sheet
+	PROCEDURE GetMaxColumnNumber		&& Returns the max column number for a sheet
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lnMaxCol
 		IF PCOUNT() < 2
@@ -3165,7 +3165,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN NVL(lnMaxCol, 0)
 	ENDPROC
 
-	PROTECTED PROCEDURE getnextid		&& Gets the next sequential Id value
+	PROTECTED PROCEDURE GetNextId		&& Gets the next sequential Id value
 		LPARAMETERS tnWB, tcCursor
 		LOCAL lnNdx, lnNextId
 		DO CASE
@@ -3345,12 +3345,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnNextId
 	ENDPROC
 
-	PROTECTED PROCEDURE getnodeattributevalue		&& Returns the attribute value
+	PROTECTED PROCEDURE GetNodeAttributeValue		&& Returns the attribute value
 		LPARAMETERS tcXf, tcAttrName
 		RETURN STREXTRACT(tcXf, tcAttrName+'="', '"', 1)
 	ENDPROC
 
-	PROTECTED PROCEDURE getnodecount		&& Returns the number of nodes to be processed
+	PROTECTED PROCEDURE GetNodeCount		&& Returns the number of nodes to be processed
 		LPARAMETERS tcNode, tcElement
 		LOCAL lnCount
 		lnCount = OCCURS("<"+tcElement+">", tcNode)
@@ -3363,7 +3363,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnCount
 	ENDPROC
 
-	PROTECTED PROCEDURE getnodeelement		&& Gets the string content for the node element
+	PROTECTED PROCEDURE GetNodeElement		&& Gets the string content for the node element
 		LPARAMETERS tcNode, tcElement, tnNode, tlStrict, tnFlag
 		LOCAL lcContent, lnNdx, loException
 		DO CASE
@@ -3391,12 +3391,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcContent
 	ENDPROC
 
-	PROTECTED PROCEDURE getnodeelementvalue		&& Gets the value assigned to the node element
+	PROTECTED PROCEDURE GetNodeElementValue		&& Gets the value assigned to the node element
 		LPARAMETERS tcElement
 		RETURN STREXTRACT(tcElement, '>', '<', 1, 1)
 	ENDPROC
 
-	PROCEDURE getnumberofsheets		&& Returns the number of sheets for the given workbook
+	PROCEDURE GetNumberOfSheets		&& Returns the number of sheets for the given workbook
 		LPARAMETERS tnWB
 		LOCAL lnCount
 		SELECT xl_sheets
@@ -3404,7 +3404,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnCount
 	ENDPROC
 
-	PROCEDURE getpapersize		&& Gets the paper size for the selected sheet
+	PROCEDURE GetPaperSize		&& Gets the paper size for the selected sheet
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lxReturn
 		IF PCOUNT() = 2 .AND. this.GetSheetRecord(tnWB, tnSheet)
@@ -3415,7 +3415,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROCEDURE getprintorientation		&& Gets the print orientation for the sheet output
+	PROCEDURE GetPrintOrientation		&& Gets the print orientation for the sheet output
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lxReturn
 		IF PCOUNT() = 2 .AND. this.GetSheetRecord(tnWB, tnSheet)
@@ -3426,7 +3426,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE getrelationshipfilename		&& Gets the file name for the R:Id value in the relationships XML
+	PROTECTED PROCEDURE GetRelationshipFileName		&& Gets the file name for the R:Id value in the relationships XML
 		LPARAMETERS tnWB, tnShRId
 		LOCAL lcFileName
 		lcFileName = ""
@@ -3436,7 +3436,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcFileName
 	ENDPROC
 
-	PROCEDURE getrgbvalues		&& Gets the specified RGB color value
+	PROCEDURE GetRGBValues		&& Gets the specified RGB color value
 		LPARAMETERS tnColorValue, tcRGB
 		LOCAL lnValue, lnNdx
 		IF PCOUNT() < 2
@@ -3467,12 +3467,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN INT(lnValue)
 	ENDPROC
 
-	PROTECTED PROCEDURE getrowheightkeyexpr		&& Gets the key expression for the c_rowheights
+	PROTECTED PROCEDURE GetRowHeightKeyExpr		&& Gets the key expression for the c_rowheights
 		LPARAMETERS tnWB, tnSheet, tnRow
 		RETURN BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(tnRow)
 	ENDPROC
 
-	PROTECTED PROCEDURE getrowincolrowpair		&& REturns the row (integer value) in a ColRow pair; i.e., return 6 from A6 reference
+	PROTECTED PROCEDURE GetRowInColRowPair		&& REturns the row (integer value) in a ColRow pair; i.e., return 6 from A6 reference
 		LPARAMETERS tcColRow
 		LOCAL lcRow, lnNdx, lcChr
 		lcRow = ""
@@ -3485,7 +3485,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN INT(VAL(lcRow))
 	ENDPROC
 
-	PROCEDURE getrowmaxcolumn		&& Returns the selected row maximum column
+	PROCEDURE GetRowMaxColumn		&& Returns the selected row maximum column
 		LPARAMETERS tnWB, tnSheet, tnCellRow
 		LOCAL lnMaxCol
 		IF SEEK(BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(tnCellRow), "xl_rows", "id")
@@ -3496,7 +3496,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnMaxCol
 	ENDPROC
 
-	PROTECTED PROCEDURE getsharedstringid		&& Gets the Shared Strings Id value for the cell text
+	PROTECTED PROCEDURE GetSharedStringId		&& Gets the Shared Strings Id value for the cell text
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL loSharedString
 		loSharedString = .NULL.
@@ -3511,7 +3511,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loSharedString
 	ENDPROC
 
-	PROCEDURE getsheetname		&& Gets the sheet name
+	PROCEDURE GetSheetName		&& Gets the sheet name
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lcSheetName
 		IF PCOUNT() = 2 .AND. this.GetSheetRecord(tnWB, tnSheet)
@@ -3522,12 +3522,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcSheetName
 	ENDPROC
 
-	PROTECTED PROCEDURE getsheetrecord		&& Positions the record in xl_sheets; returns true if record found, or false if not found
+	PROTECTED PROCEDURE GetSheetRecord		&& Positions the record in xl_sheets; returns true if record found, or false if not found
 		LPARAMETERS tnWB, tnSheet
 		RETURN SEEK(BINTOC(tnWB)+BINTOC(tnSheet), "xl_sheets", "sheetndx")
 	ENDPROC
 
-	PROCEDURE getsheetrowvalues		&& Returns the cell values for the given row
+	PROCEDURE GetSheetRowValues		&& Returns the cell values for the given row
 		LPARAMETERS tnWB, tnSheet, tnCellRow
 		LOCAL lnMaxCol, loRow
 		IF PCOUNT() < 3
@@ -3558,7 +3558,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loRow
 	ENDPROC
 
-	PROCEDURE getsheetscale		&& Gets the sheet printing scale
+	PROCEDURE GetSheetScale		&& Gets the sheet printing scale
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lxReturn
 		IF PCOUNT() = 2 .AND. this.GetSheetRecord(tnWB, tnSheet)
@@ -3569,12 +3569,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lxReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE getstringrecord		&& Positions the record pointer to the selected string record
+	PROTECTED PROCEDURE GetStringRecord		&& Positions the record pointer to the selected string record
 		LPARAMETERS tnWB, tcString
 		RETURN SEEK(BINTOC(tnWB)+this.GetCheckSum(tcString), "xl_strings", "stringndx")
 	ENDPROC
 
-	PROTECTED PROCEDURE getstringxml		&& Returns a converted string from XML to text
+	PROTECTED PROCEDURE GetStringXML		&& Returns a converted string from XML to text
 		LPARAMETERS tcString
 		LOCAL lcString, lcOldChr, lcChr, lnChr, lnNdx
 		IF LEFT(tcString, 1) != " " .AND. EMPTY(tcString)
@@ -3609,7 +3609,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcString
 	ENDPROC
 
-	PROCEDURE getvalidation		&& Returns the validation definition
+	PROCEDURE GetValidation		&& Returns the validation definition
 		LPARAMETERS tnValidNdx
 		LOCAL loValiation
 		loValiation = CREATEOBJECT("Empty")
@@ -3643,7 +3643,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loValiation
 	ENDPROC
 
-	PROCEDURE getvalidationlist		&& Returns a list of validations for the workbook/sheet
+	PROCEDURE GetValidationList		&& Returns a list of validations for the workbook/sheet
 		LPARAMETERS tnWB, tnSheet
 		LOCAL loValiation, lcAlias
 		lcAlias = ALIAS()
@@ -3663,7 +3663,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loValiation
 	ENDPROC
 
-	PROCEDURE getworkbook		&& Gets the workbook Id from the name
+	PROCEDURE GetWorkbook		&& Gets the workbook Id from the name
 		LPARAMETERS tcName
 		LOCAL lcWBName, lnWBIndex
 		lcWBName = JUSTSTEM(tcName)
@@ -3675,7 +3675,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnWBIndex
 	ENDPROC
 
-	PROCEDURE getworkbookfilename		&& Gets the file name for the workbook index
+	PROCEDURE GetWorkbookFileName		&& Gets the file name for the workbook index
 		LPARAMETERS tnWB
 		LOCAL lcFileName
 		IF SEEK(BINTOC(tnWB), "xl_workbooks", "workbook")
@@ -3686,7 +3686,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE getworkbooksheets		&& Returns the workbook sheets
+	PROCEDURE GetWorkbookSheets		&& Returns the workbook sheets
 		LPARAMETERS tnWB
 		LOCAL loSheets
 		loSheets = CREATEOBJECT("Empty")
@@ -3704,7 +3704,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loSheets
 	ENDPROC
 
-	PROTECTED PROCEDURE getxmlheaderfootertext		&& Returns a XML formatted string for the header and footer text
+	PROTECTED PROCEDURE GetXMLHeaderFooterText		&& Returns a XML formatted string for the header and footer text
 		LOCAL lcText
 		IF EMPTY(xl_hdrfootertext.fontname)
 			lcText = '"-,'
@@ -3734,7 +3734,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lcText
 	ENDPROC
 
-	PROTECTED PROCEDURE getxmlstring		&& Gets the string as an XML formatted string
+	PROTECTED PROCEDURE GetXMLString		&& Gets the string as an XML formatted string
 		LPARAMETERS tcString
 		LOCAL lcString, lcXMLString, lnNdx, lcChar, lcInvalidChars, loNodeText
 		IF LEFT(tcString, 1) != " " .AND. EMPTY(tcString)
@@ -3788,7 +3788,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		this.OnInit()
 	ENDPROC
 
-	PROTECTED PROCEDURE initalizeidvalues		&& Initializes the internal Id values
+	PROTECTED PROCEDURE InitalizeIdValues		&& Initializes the internal Id values
 		DIMENSION this.LastBorderId[1, 2]
 		this.LastBorderId[1, 1] = 0                                          && Workbook Id
 		this.LastBorderId[1, 2] = 0                                          && Last Border Id
@@ -3830,7 +3830,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		this.LastStringId[1, 2] = 0                                          && Last String Id
 	ENDPROC
 
-	PROCEDURE insertcell		&& Inserts a new cell into the sheet
+	PROCEDURE InsertCell		&& Inserts a new cell into the sheet
 		LPARAMETERS tnWB, tnSheet, tnRow, tnCol, tnShift
 		LOCAL llReturn, lnRow
 		IF PCOUNT() < 5
@@ -3878,7 +3878,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE insertcolumn		&& Inserts a new column into the sheet
+	PROCEDURE InsertColumn		&& Inserts a new column into the sheet
 		LPARAMETERS tnWB, tnSheet, tnCol, tnShift
 		LOCAL llReturn
 		IF PCOUNT() < 4
@@ -3916,7 +3916,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE insertrow		&& Inserts a new row into the sheet
+	PROCEDURE InsertRow		&& Inserts a new row into the sheet
 		LPARAMETERS tnWB, tnSheet, tnRow, tnShift
 		LOCAL llReturn, lnRow
 		IF PCOUNT() < 4
@@ -3956,7 +3956,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE iscellformula		&& Returns True if cell contains a formula
+	PROCEDURE IsCellFormula		&& Returns True if cell contains a formula
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		LOCAL llFormula
 		IF PCOUNT() < 4
@@ -3969,7 +3969,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llFormula
 	ENDPROC
 
-	PROTECTED PROCEDURE iscellreferenceinvalid		&& Checks if the cell reference is invalid (outside of limits)
+	PROTECTED PROCEDURE IsCellReferenceInvalid		&& Checks if the cell reference is invalid (outside of limits)
 		LPARAMETERS tnRow, tnCol
 		IF tnRow > LIMITS_MAX_ROWS .OR. tnCol > LIMITS_MAX_COLUMNS
 			RETURN True
@@ -3977,7 +3977,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN False
 	ENDPROC
 
-	PROTECTED PROCEDURE isvalidborderstyle		&& Validates the border style value
+	PROTECTED PROCEDURE IsValidBorderStyle		&& Validates the border style value
 		LPARAMETERS tcStyle
 		IF VARTYPE(tcStyle) != 'C' .OR. EMPTY(tcStyle) .OR. !INLIST(tcStyle, BORDER_STYLE_THIN, BORDER_STYLE_HAIR, BORDER_STYLE_DOTTED, BORDER_STYLE_DASHDOTDOT, ;
 																			 BORDER_STYLE_DASHDOT, BORDER_STYLE_DASHED, BORDER_STYLE_THIN, BORDER_STYLE_MEDIUMDASHDOTDOT, ;
@@ -3988,7 +3988,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE mergecells		&& Merges cells together
+	PROCEDURE MergeCells		&& Merges cells together
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol
 		LOCAL lnRow, lnCol, lcCellValue, lnStringIndex, lcDataType, lcCellFormula, llReturn
 		IF PCOUNT() < 6
@@ -4062,26 +4062,26 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE ondestroy		&& Called by the Destroy() event - user implementation
+	PROCEDURE OnDestroy		&& Called by the Destroy() event - user implementation
 		*-*
 		*-*	TODO: Add your code here
 		*-*
 	ENDPROC
 
-	PROCEDURE oninit		&& User code for Init() Event
+	PROCEDURE OnInit		&& User code for Init() Event
 		*-*
 		*-*	TODO: Add your code here
 		*-*
 	ENDPROC
 
-	PROCEDURE onshowerrormessage		&& Event for displaying an error message to the user
+	PROCEDURE OnShowErrorMessage		&& Event for displaying an error message to the user
 		LPARAMETERS tnErrorId, tcErrMessage
 		*-*
 		*-*	TODO: Use BINDEVENTS to bind to this event and display a message to your users
 		*-*
 	ENDPROC
 
-	PROCEDURE onshowstatusmessage		&& Event for displaying a wait message to the user
+	PROCEDURE OnShowStatusMessage		&& Event for displaying a wait message to the user
 		LPARAMETERS tnMode, tnStage, tnTotStages
 		*-*
 		*-*	TODO: Use BINDEVENTS to bind to this event and display a message to your users
@@ -4115,7 +4115,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*-*
 	ENDPROC
 
-	PROCEDURE opencreatedxlsxfile		&& Opens the XLSX file via Win32 API default program
+	PROCEDURE OpenCreatedXlsxFile		&& Opens the XLSX file via Win32 API default program
 		LPARAMETERS txWB
 		LOCAL lcFileName
 		DO CASE
@@ -4146,7 +4146,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDTRY
 	ENDPROC
 
-	PROCEDURE openxlsxworkbook		&& Opens the passed Xlsx workbook and loads the internal cursors with the content
+	PROCEDURE OpenXlsxWorkbook		&& Opens the passed Xlsx workbook and loads the internal cursors with the content
 		LPARAMETERS tcFileName, tlForceTextFormat
 		LOCAL lnWB, lcBaseName, lcTempPath, lcZipName, loShell, lnCnt, lnCntTot, lcRelationsXml, lnNode
 		LOCAL lnRelId, lcRelType, lcTarget, lcWbXmlPath, lcRelation, lcWorkbook, lcSheet, lcShName, lnShRId, lcShFile
@@ -4410,7 +4410,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN lnWB
 	ENDPROC
 
-	PROCEDURE parsestring		&& Parses a string based on a specified delimiter
+	PROCEDURE ParseString		&& Parses a string based on a specified delimiter
 		LPARAMETERS tcText, tnPos, tcDelimiter
 		LOCAL lcWord, lnCnt, lnBeg, lnEnd
 		lnCnt = OCCURS(tcDelimiter, tcText) + 1
@@ -4436,7 +4436,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROTECTED PROCEDURE readcellvalueformat		&& Reads the cell value and format for a sheet
+	PROTECTED PROCEDURE ReadCellValueFormat		&& Reads the cell value and format for a sheet
 		LPARAMETERS tnWB, tcColumn, tnCellCol
 		LOCAL lcCellType, lnNode, lcBaseName, lcFormatCode, lnNdx, loCellFormat, lcWholeNbr, lcDecNbr
 		LOCAL lcPosFormat, lcNegFormat, lcZerFormat
@@ -4603,7 +4603,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loCellFormat
 	ENDPROC
 
-	PROTECTED PROCEDURE readexternalrefxml		&& Reads the External References file
+	PROTECTED PROCEDURE ReadExternalRefXML		&& Reads the External References file
 		LPARAMETERS tnWB, tcFileName, tnRelId
 		LOCAL lcExternalLink, lcSheetNames, lnNode, lcSheetName, lcShName
 		
@@ -4640,7 +4640,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROTECTED PROCEDURE readsharedstringsxml		&& Reads the sharedstrings.xml for opening workbooks
+	PROTECTED PROCEDURE ReadSharedStringsXML		&& Reads the sharedstrings.xml for opening workbooks
 		LPARAMETERS tcFilePath, tnWB
 		LOCAL lcStrings, lcString, lnNode, lcRichTextRun, lcText, lnIndex, llFBold, llFItalic, loException, lcT
 		LOCAL lnFColor, lcFName, lnFSize, lcULine, llStrkThr, lcFVPos, lnTheme, lnTint, lnIndexed, lcRunPrp
@@ -4736,7 +4736,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROTECTED PROCEDURE readsheetxml		&& Reads the sheet.xml for opening a workbook
+	PROTECTED PROCEDURE ReadSheetXML		&& Reads the sheet.xml for opening a workbook
 		LPARAMETERS tcShFile, tnWB, tnSheet, tcShName, tnShState, tlForceTextFormat
 		LOCAL lcSheet, lcSheetViews, lcSheetView, lcPane, lcMargin, lnXSplit, lnYSplit, lnLeft, lcDimen, lnScale, lnFitToWidth, lnFitToHeight
 		LOCAL lnRight, lnTop, lnBottom, lnHeader, lnFooter, lcPageSetup, lnOrientation, lnPaperSize, lnWidth, lnHeight, lnNode, lcMergeCells
@@ -5017,7 +5017,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROTECTED PROCEDURE readstylesxml		&& Reads the styles.xml file for opening a workbook
+	PROTECTED PROCEDURE ReadStylesXML		&& Reads the styles.xml file for opening a workbook
 		LPARAMETERS tcFilePath, tnWB
 		LOCAL lcCellXfs, lnCnt, lcXf, lnIndent, lnWrapTx, lcAlign, lcStyleSheet, lnNode, lnNumFmtId, lnFontId, lnFillId, lnBorderId
 		LOCAL lcHAlign, lcVAlign, lcNumFmts, lcFonts, lcNumFmt, lcFormatCode, lcFont, lnIndexed, lnFSize, lcFName, llFBold, llFItalic, llStrkthr
@@ -5270,7 +5270,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROTECTED PROCEDURE removeworkingdirectories		&& Removes the working directories
+	PROTECTED PROCEDURE RemoveWorkingDirectories		&& Removes the working directories
 		LPARAMETERS tcDir
 		LOCAL llReturn, loException
 		TRY
@@ -5283,7 +5283,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE renamesheet		&& Renames the selected sheet
+	PROCEDURE RenameSheet		&& Renames the selected sheet
 		LPARAMETERS tnWB, txSheet, tcSheetName
 		LOCAL llReturn
 		llReturn = False
@@ -5303,22 +5303,22 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE resetcolumnwidth		&& Resets the column width to default
+	PROCEDURE ResetColumnWidth		&& Resets the column width to default
 		LPARAMETERS tnWB, tnSheet, tnColumn
 		IF SEEK(this.GetColWidthKeyExpr(tnWB, tnSheet, tnColumn), "xl_colwidths", "shcolumn")
 			DELETE IN xl_colwidths
 		ENDIF
 	ENDPROC
 
-	PROTECTED PROCEDURE saveasutf8		&& Saves the file as a UTF-8
+	PROTECTED PROCEDURE SaveAsUTF8		&& Saves the file as a UTF-8
 		LPARAMETERS tcFileName
 		STRTOFILE(STRCONV(FILETOSTR(tcFileName), 9), tcFileName, 4)
 	ENDPROC
 
-	PROCEDURE savegridtoworkbook		&& Saves the selected grid to a workbook
+	PROCEDURE SaveGridToWorkbook		&& Saves the selected grid to a workbook
 		LPARAMETERS toGrid, txWB, tlFreeze, tlSaveWB, tcSheetName
 		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, loColumn, lnStyle
-		LOCAL ARRAY laRowCount[1]
+		LOCAL ARRAY laRowCount[1], laColOrder[1]
 		loReturn = CREATEOBJECT("Empty")
 		ADDPROPERTY(loReturn, "Workbook",  0)
 		ADDPROPERTY(loReturn, "Sheet", 0)
@@ -5375,35 +5375,45 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				SELECT COUNT(*) FROM &lcAlias INTO ARRAY laRowCount
 				RAISEEVENT(this, "OnShowStatusMessage", 3, 0, laRowCount[1])
 		
+		*-*		Get the column output order based on grid display order          && Change requested by Matt Slay to output by grid display order
+				DIMENSION laColOrder[lnFldCnt, 2]
+				FOR lnCol=1 TO lnFldCnt
+					laColOrder[lnCol, 1] = toGrid.Columns(lnCol).ColumnOrder     && Grid display order
+					laColOrder[lnCol, 2] = lnCol                                 && Column property order
+				ENDFOR
+				ASORT(laColOrder)
+		
 		*-*		Add the header row if defined and set the column widths; get the column font info
-				IF toGrid.HeaderHeight > 0                                   && Change recommendation by Doug Hennig (if no headers, start in first row)
+				IF toGrid.HeaderHeight > 0                                       && Change recommendation by Doug Hennig (if no headers, start in first row)
 					lnRow = 1
 					FOR lnCol=1 TO toGrid.ColumnCount
-						loColumn = toGrid.Columns(lnCol)
+						loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 						this.SetCellValue(lnWB, lnSh, 1, lnCol, loColumn.Header1.Caption)
 						this.SetColumnWidth(lnWB, lnSh, lnCol, this.ConvertPixelsToExcelUnits(loColumn.Width))
 					ENDFOR
 				ELSE
 					lnRow = 0
 					FOR lnCol=1 TO toGrid.ColumnCount
-						loColumn = toGrid.Columns(lnCol)
+						loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 						this.SetColumnWidth(lnWB, lnSh, lnCol, this.ConvertPixelsToExcelUnits(loColumn.Width))
 					ENDFOR
 				ENDIF
+		
 		*-*		Add the cell data values
 				SELECT &lcAlias
 				SCAN
 					lnRow = lnRow + 1
 					RAISEEVENT(this, "OnShowStatusMessage", 3, lnRow)
 					FOR lnCol=1 TO toGrid.ColumnCount
-						loColumn = toGrid.Columns(lnCol)
+						loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 						lcField  = loColumn.ControlSource
 						this.SetCellValue(lnWB, lnSh, lnRow, lnCol, &lcField)
 					ENDFOR
 				ENDSCAN
+		
 		*-*		Set the cell style formatting
 				FOR lnCol=1 TO toGrid.ColumnCount
-					loColumn = toGrid.Columns(lnCol)
+					loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 					lnStyle  = this.CreateFormatStyle(lnWB)
 					IF this.DefaultFont != loColumn.FontName .OR. this.DefaultFontSize != loColumn.FontSize   && Change recommended by Doug Hennig; 2017-06-12
 						this.AddStyleFont(lnWB, lnStyle, loColumn.FontName, loColumn.FontSize)
@@ -5412,6 +5422,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDIF
 					this.SetCellStyleRange(lnWB, lnSh, 1, lnCol, laRowCount[1]+1, lnCol, lnStyle)
 				ENDFOR
+		
 		*-*		Freeze the first row if specified
 				IF tlFreeze
 					this.FreezePanes(lnWB, lnSh, 1, 0)
@@ -5427,10 +5438,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loReturn
 	ENDPROC
 
-	PROCEDURE savegridtoworkbookex		&& Saves the passed grid to a workbook without adding the content to the internal cursors
+	PROCEDURE SaveGridToWorkbookEx		&& Saves the passed grid to a workbook without adding the content to the internal cursors
 		LPARAMETERS toGrid, tcFileName, tlFreeze, tcSheetName
 		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentury, lxCellValue
 		LOCAL lnFldCnt, lnColWidth
+		LOCAL ARRAY laColOrder[1]
 		llError = False
 		DO CASE
 			CASE PCOUNT() < 2
@@ -5486,14 +5498,22 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					FWRITE(lhFile, '<sheetViews><sheetView workbookViewId="0">')
 					FWRITE(lhFile, '<pane state="frozenSplit" activePane="bottomLeft" topLeftCell="A2" ySplit="1"/>')
 					FWRITE(lhFile, '<selection activeCell="A2" sqref="A2" pane="bottomLeft"/>')
+					FWRITE(lhFile, '</sheetView></sheetViews>')
 				ENDIF
-				FWRITE(lhFile, '</sheetView></sheetViews>')
 				FWRITE(lhFile, '<sheetFormatPr defaultRowHeight="15"/>')
+		
+		*-*		Get the column output order based on grid display order          && Change requested by Matt Slay to output by grid display order
+				DIMENSION laColOrder[lnFldCnt, 2]
+				FOR lnCol=1 TO lnFldCnt
+					laColOrder[lnCol, 1] = toGrid.Columns(lnCol).ColumnOrder     && Grid display order
+					laColOrder[lnCol, 2] = lnCol                                 && Column property order
+				ENDFOR
+				ASORT(laColOrder)
 		
 		*-*		Write sheet Column widths
 				FWRITE(lhFile, '<cols>')
 				FOR lnCol=1 TO lnFldCnt
-					lnColWidth = this.ConvertPixelsToExcelUnits(toGrid.Columns(lnCol).Width)
+					lnColWidth = this.ConvertPixelsToExcelUnits(toGrid.Columns(laColOrder[lnCol, 2]).Width)
 					FWRITE(lhFile, '<col min="' + TRANSFORM(lnCol) + '" max="' + TRANSFORM(lnCol) + '" width="' + TRANSFORM(lnColWidth+0.7109375) + '" customWidth="1"/>')
 				ENDFOR
 				FWRITE(lhFile, '</cols>')
@@ -5506,7 +5526,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				IF toGrid.HeaderHeight > 0                                       && Change recommendation by Doug Hennig (if no headers, then no output)
 					FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
 					FOR lnCol=1 TO lnFldCnt
-						this.WriteAsInLineString(lhFile, 1, lnCol, toGrid.Columns(lnCol).Header1.Caption)
+						this.WriteAsInLineString(lhFile, 1, lnCol, toGrid.Columns(laColOrder[lnCol, 2]).Header1.Caption)
 					ENDFOR
 					FWRITE(lhFile, '</row>')
 					lnRow = 1
@@ -5522,7 +5542,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					lnRow = lnRow + 1
 					FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
 					FOR lnCol=1 TO lnFldCnt
-						lxCellValue = EVALUATE(toGrid.Columns(lnCol).ControlSource)
+						lxCellValue = EVALUATE(toGrid.Columns(laColOrder[lnCol, 2]).ControlSource)
 						this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
 					ENDFOR
 					FWRITE(lhFile, '</row>')
@@ -5563,7 +5583,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROCEDURE savetabletoworkbook		&& Saves the table passed (alias) as a workbook sheet
+	PROCEDURE SaveTableToWorkbook		&& Saves the table passed (alias) as a workbook sheet
 		LPARAMETERS tcAlias, tnWB, tlFreeze, tlSaveWB, tcSheetName
 		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, lnFldCnt, llError, llOpenedTbl, loException, lcCurAlias, loReturn
 		LOCAL lnNdx, lcCaption
@@ -5694,7 +5714,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN loReturn
 	ENDPROC
 
-	PROCEDURE savetabletoworkbookex		&& Creates a new workbook from a table; direct write to XLSX file without loading internal cursors
+	PROCEDURE SaveTableToWorkbookEx		&& Creates a new workbook from a table; direct write to XLSX file without loading internal cursors
 		LPARAMETERS tcAlias, tcXlsxName, taFields, tlFreeze, tcSheetName
 		LOCAL lcCurAlias, llOpenedTbl, lcAlias, llError, loException, lhFile, lnCol, lcRowDefHt
 		LOCAL lnFldCnt, lnRow, lxCellValue, lcTempPath, lcFileName, lcSETCentry, lcCaption, llSuccess, lcSetPoint
@@ -5865,7 +5885,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROCEDURE saveworkbook		&& Saves the selected workbook as an XLSX file
+	PROCEDURE SaveWorkbook		&& Saves the selected workbook as an XLSX file
 		LPARAMETERS tnWB
 		LOCAL lcTempPath, lnSheet, lcDeleted, lcSetPoint, lcSeparator, lcSetDeleted, llReturn, lcAlias
 		LOCAL lcSafety, lnTotStages
@@ -5934,7 +5954,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE saveworkbookas		&& Saves the selected workbook with the new name
+	PROCEDURE SaveWorkbookAs		&& Saves the selected workbook with the new name
 		LPARAMETERS tnWB, tcWBName
 		LOCAL lcName, lcPath
 		IF SEEK(BINTOC(tnWB), "xl_workbooks", "workbook") .AND. !EMPTY(tcWBName)
@@ -5949,7 +5969,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE setcellalignment		&& Sets the cell horizontal and vertical alignments
+	PROCEDURE SetCellAlignment		&& Sets the cell horizontal and vertical alignments
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tcHorizAlign, tcVertAlign
 		LOCAL llReturn, lnCellXfsId, lcAlias
 		IF PCOUNT() < 4 .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6060,7 +6080,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellalignmentrange		&& Sets the cell alignment for a range of cells
+	PROCEDURE SetCellAlignmentRange		&& Sets the cell alignment for a range of cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol, tcHorizAlign, tcVertAlign
 		LOCAL lnRow, lnCol, llReturn
 		IF PCOUNT() < 7 .OR. this.IsCellReferenceInvalid(tnBegRow, tnBegCol) .OR. this.IsCellReferenceInvalid(tnEndRow, tnEndCol)
@@ -6081,7 +6101,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellborder
+	PROCEDURE SetCellBorder
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnBorders, tcStyle, tnColor
 		LOCAL lcLStyle, lnLColor, lcRStyle, lcTStyle, lnTColor, lcBStyle, lnBColor, lcDStyle, lnDColor, lnDiagDn, lnDiagUp
 		LOCAL lnRColor, llReturn, lcAlias
@@ -6141,7 +6161,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellborderex
+	PROCEDURE SetCellBorderEx
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tcLStyle, tnLColor, tcRStyle, tnRColor, tcTStyle, tnTColor, tcBStyle, tnBColor, tcDStyle, tnDColor, tnDiagDn, tnDiagUp
 		LOCAL lnCellXfsId, lnBorderId
 		IF PCOUNT() < 5 .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6225,7 +6245,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellborderrange		&& Sets the cell border for a range of cells
+	PROCEDURE SetCellBorderRange		&& Sets the cell border for a range of cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol, tnBorder, tcStyle, tnColor
 		LOCAL llReturn, lnRow, lnCol
 		IF PCOUNT() < 7 .OR. this.IsCellReferenceInvalid(tnBegRow, tnBegCol) .OR. this.IsCellReferenceInvalid(tnEndRow, tnEndCol)
@@ -6246,7 +6266,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellfill		&& Sets the fill color for the cell
+	PROCEDURE SetCellFill		&& Sets the fill color for the cell
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnFColor, tnBColor, tcPatternType
 		LOCAL llReturn, lnFillId, lnCellXfsId, lnFIndex, lnBIndex, lcAlias
 		DO CASE
@@ -6328,7 +6348,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellfillrange		&& Sets the fill for a range of cells
+	PROCEDURE SetCellFillRange		&& Sets the fill for a range of cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol, tnFColor, tnBColor, tcPatternType
 		LOCAL lnRow, lnCol, llReturn
 		DO CASE
@@ -6360,7 +6380,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellfont		&& Sets the selected cell font format
+	PROCEDURE SetCellFont		&& Sets the selected cell font format
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tcFName, tnFSize, tlBold, tlItalic, tnFColor, tcULine, tlStrikThr, tcVPos
 		LOCAL llReturn, lcAlias
 		IF PCOUNT() < 5 .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6441,7 +6461,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellfontrange		&& Sets the cell font format for a range of cells
+	PROCEDURE SetCellFontRange		&& Sets the cell font format for a range of cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol, tcFName, tnFSize, tlBold, tlItalic, tnFColor, tcULine, tlStrikThr, tcVPos
 		LOCAL lnRow, lnCol, llReturn
 		IF PCOUNT() < 7 .OR. this.IsCellReferenceInvalid(tnBegRow, tnBegCol) .OR. this.IsCellReferenceInvalid(tnEndRow, tnEndCol)
@@ -6462,7 +6482,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellformula		&& Sets the cell formula expression
+	PROCEDURE SetCellFormula		&& Sets the cell formula expression
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tcCellFormula
 		LOCAL llReturn, lcAlias
 		IF PCOUNT() < 5 .OR. VARTYPE(tcCellFormula) != "C" .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6491,7 +6511,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellindent		&& Sets the cell indentation value
+	PROCEDURE SetCellIndent		&& Sets the cell indentation value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnIndent
 		LOCAL lnCellXfsId, lcAlias
 		IF PCOUNT() != 5 .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6528,7 +6548,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE setcellinlineformattext		&& Saves the in-line format definition to a cell value
+	PROCEDURE SetCellInLineFormatText		&& Saves the in-line format definition to a cell value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, toInLine
 		LOCAL lnNdx, lcRText, llFBold, llFItalic, lnFColor, lcFName, lnFSize, lcULine, llStrkThr, lcFVPos, lcAlias
 		IF this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6576,7 +6596,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE setcellnumberdecimals		&& Sets the number of decimals to display
+	PROCEDURE SetCellNumberDecimals		&& Sets the number of decimals to display
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnNumDecimals
 		LOCAL lcAlias
 		IF PCOUNT() < 5 .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6599,7 +6619,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE setcellnumberformat		&& Sets the cell number format
+	PROCEDURE SetCellNumberFormat		&& Sets the cell number format
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnNumFormat
 		LOCAL llReturn, lnNumFmtId, lcAlias, loException
 		IF PCOUNT() < 5 .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6661,7 +6681,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellnumberformatrange		&& Sets the number format for a range of cells
+	PROCEDURE SetCellNumberFormatRange		&& Sets the number format for a range of cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol, tnNumFormat
 		LOCAL lnRow, lnCol, llReturn
 		IF PCOUNT() < 7 .OR. this.IsCellReferenceInvalid(tnBegRow, tnBegCol) .OR. this.IsCellReferenceInvalid(tnEndRow, tnEndCol)
@@ -6682,7 +6702,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellstyle		&& Sets the cell style
+	PROCEDURE SetCellStyle		&& Sets the cell style
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnCellXfsId
 		IF SEEK(BINTOC(tnWB)+BINTOC(tnCellXfsId), "xl_cellxfs", "id")
 			IF this.GetCellRecord(tnWB, tnSheet, tnCellRow, tnCellCol)
@@ -6698,7 +6718,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE setcellstylerange		&& Sets the cell style for a range of cells
+	PROCEDURE SetCellStyleRange		&& Sets the cell style for a range of cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol, tnCellXfsId
 		LOCAL lnRow, lnCol
 		IF PCOUNT() < 7 .OR. tnBegRow > tnEndRow .OR. tnBegCol > tnEndCol
@@ -6722,7 +6742,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE setcelltextrotation		&& Sets the cell text rotation value
+	PROCEDURE SetCellTextRotation		&& Sets the cell text rotation value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnRotation
 		LOCAL lnCellXfsId, lcAlias
 		IF PCOUNT() != 5 .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -6765,7 +6785,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE setcellvalidation		&& Adds a cell validation
+	PROCEDURE SetCellValidation		&& Adds a cell validation
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tnType, tnStyle, tnOperator, tlAllowBlank, tlShowInputMsg, tlShowErrMsg, tcErrMsg, tcErrTitle, tcPrompt, tcFormula1, tcFormula2
 		LOCAL lcAlias, lnIndex, llFormula
 		lcAlias = ALIAS()
@@ -6885,7 +6905,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE setcellvalue		&& Sets the cell value
+	PROCEDURE SetCellValue		&& Sets the cell value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, txCellValue
 		LOCAL lcCellValue, lcDataType, lnStringNdx, lnSetDecimals, lnWholePart, lnFractPart, lcAlias, lnNumFmtId, lcHorzAlign
 		LOCAL lcSetDate, lcSetPoint, lcSeparator, lcCurrency
@@ -7041,7 +7061,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE setcellwordwrap		&& Sets the cell word-wrapping value
+	PROCEDURE SetCellWordWrap		&& Sets the cell word-wrapping value
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol, tlWordWrap
 		LOCAL llReturn, lnWrapText, lnCellXfsId, lcAlias
 		IF PCOUNT() < 5 .OR. VARTYPE(tlWordWrap) != "L" .OR. this.IsCellReferenceInvalid(tnCellRow, tnCellCol)
@@ -7081,7 +7101,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcellwordwraprange		&& Sets the word wrap for a range of cells
+	PROCEDURE SetCellWordWrapRange		&& Sets the word wrap for a range of cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol, tlWordWrap
 		LOCAL lnRow, lnCol, llReturn
 		IF PCOUNT() < 7 .OR. VARTYPE(tlWordWrap) != "L" .OR. this.IsCellReferenceInvalid(tnBegRow, tnBegCol) .OR. this.IsCellReferenceInvalid(tnEndRow, tnEndCol)
@@ -7102,7 +7122,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcolumnbestfit		&& Set the column to best fit
+	PROCEDURE SetColumnBestFit		&& Set the column to best fit
 		LPARAMETERS tnWB, tnSheet, tnColumn, tlBestFit
 		LOCAL llReturn, lcAlias
 		IF PCOUNT() < 4
@@ -7125,7 +7145,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcolumnwidth		&& Sets the column width
+	PROCEDURE SetColumnWidth		&& Sets the column width
 		LPARAMETERS tnWB, tnSheet, tnColumn, tnWidth
 		LOCAL llReturn, lcAlias
 		IF PCOUNT() < 4 .OR. VARTYPE(tnWidth) != "N"
@@ -7148,7 +7168,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcolumnwidthrange		&& Sets the column width for a range of columns
+	PROCEDURE SetColumnWidthRange		&& Sets the column width for a range of columns
 		LPARAMETERS tnWB, tnSheet, tnBegCol, tnEndCol, tnWidth
 		LOCAL lnCol, llReturn
 		IF PCOUNT() < 5
@@ -7167,7 +7187,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setcustompapersize		&& Sets the paper size based on custom dimensions
+	PROCEDURE SetCustomPaperSize		&& Sets the paper size based on custom dimensions
 		LPARAMETERS tnWB, tnSheet, tnWidth, tnHeight, tcDimen
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7197,7 +7217,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setdefaultborder		&& Sets the default border style for the workbook
+	PROCEDURE SetDefaultBorder		&& Sets the default border style for the workbook
 		LPARAMETERS tnWB, tcLStyle, tnLColor, tcRStyle, tnRColor, tcTStyle, tnTColor, tcBStyle, tnBColor, tcDStyle, tnDColor, tnDiagDn, tnDiagUp
 		LOCAL lcAlias
 		IF PCOUNT() < 2
@@ -7353,7 +7373,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE setdefaultfill		&& Sets the default fill for the workbook
+	PROCEDURE SetDefaultFill		&& Sets the default fill for the workbook
 		LPARAMETERS tnWB, tcPatternType, tnFColor, tnBColor
 		LOCAL lnFIndex, lnBIndex, lcAlias
 		IF PCOUNT() < 2
@@ -7398,7 +7418,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN True
 	ENDPROC
 
-	PROCEDURE setdefaultfont		&& Sets the default font for the workbook
+	PROCEDURE SetDefaultFont		&& Sets the default font for the workbook
 		LPARAMETERS tnWB, tcFontName, tnSize, tlBold, tlItalic, tnColor, tcUline, tlStrkthr, tcFVPos, tnTheme, tnTint, tnIndexed
 		LOCAL lcAlias
 		IF PCOUNT() < 2
@@ -7536,7 +7556,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN true
 	ENDPROC
 
-	PROCEDURE setheaderfootersetup		&& Sets the header and footer setup for the sheet
+	PROCEDURE SetHeaderFooterSetup		&& Sets the header and footer setup for the sheet
 		LPARAMETERS tnWB, tnSheet, tlAlignMargin, tlDiffFirstPg, tlDiffOddEven, tlScaleWDoc
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7560,7 +7580,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setheaderfootertext		&& Sets the header/footer text for the sheet
+	PROCEDURE SetHeaderFooterText		&& Sets the header/footer text for the sheet
 		LPARAMETERS tnWB, tnSheet, tnPage, tnSection, tcText, tcFontName, tnFontSize, tnFontEffect, tnFontColor
 		LOCAL llReturn, lcAlias
 		DO CASE
@@ -7623,7 +7643,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE setlastid		&& Sets the last used Id Value for strings, borders, fills, fonts, and cellxfs
+	PROTECTED PROCEDURE SetLastId		&& Sets the last used Id Value for strings, borders, fills, fonts, and cellxfs
 		LPARAMETERS tnWB, tnLastId, tcCursor
 		LOCAL lnNdx
 		DO CASE
@@ -7779,7 +7799,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDCASE
 	ENDPROC
 
-	PROCEDURE setpapersize		&& Sets the paper size for the selected sheet
+	PROCEDURE SetPaperSize		&& Sets the paper size for the selected sheet
 		LPARAMETERS tnWB, tnSheet, tnPaperSize
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7799,7 +7819,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setprintfittoheight		&& Number of vertical pages to fit on for printing
+	PROCEDURE SetPrintFitToHeight		&& Number of vertical pages to fit on for printing
 		LPARAMETERS tnWB, tnSheet, tnFitToHeight
 		LOCAL llReturn
 		lcAlias = ALIAS()
@@ -7819,7 +7839,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setprintfittowidth		&& Number of horizontal pages to fit on for printing
+	PROCEDURE SetPrintFitToWidth		&& Number of horizontal pages to fit on for printing
 		LPARAMETERS tnWB, tnSheet, tnFitToWidth
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7839,7 +7859,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setprintorientation		&& Sets the printer orientation for sheet output
+	PROCEDURE SetPrintOrientation		&& Sets the printer orientation for sheet output
 		LPARAMETERS tnWB, tnSheet, tnOrientation
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7855,7 +7875,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setrowheight		&& Sets the row height
+	PROCEDURE SetRowHeight		&& Sets the row height
 		LPARAMETERS tnWB, tnSheet, tnRow, tnHeight
 		LOCAL llReturn, lcAlias
 		IF PCOUNT() < 4 .OR. VARTYPE(tnHeight) != "N"
@@ -7878,7 +7898,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setrowheightrange		&& Sets the row height for a range of rows
+	PROCEDURE SetRowHeightRange		&& Sets the row height for a range of rows
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnEndRow, tnHeight
 		LOCAL lnRow, llReturn
 		IF PCOUNT() < 5
@@ -7897,7 +7917,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE setrowmaxcolumn		&& Sets the value for the maximum cell column in a row
+	PROTECTED PROCEDURE SetRowMaxColumn		&& Sets the value for the maximum cell column in a row
 		LPARAMETERS tnWB, tnSheet, tnCellRow, tnCellCol
 		IF SEEK(BINTOC(tnWB)+BINTOC(tnSheet)+BINTOC(tnCellRow), "xl_rows", "id")
 			IF xl_rows.maxcol < tnCellCol
@@ -7908,7 +7928,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 	ENDPROC
 
-	PROCEDURE setsheetmargins		&& Sets the sheet margin values
+	PROCEDURE SetSheetMargins		&& Sets the sheet margin values
 		LPARAMETERS tnWB, tnSheet, tnLeft, tnRight, tnTop, tnbot, tnHeader, tnFooter
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7929,7 +7949,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setsheetscale		&& Sets the print scale; must be between 10 and 400; i.e. 10=10%, 100=100%, etc.
+	PROCEDURE SetSheetScale		&& Sets the print scale; must be between 10 and 400; i.e. 10=10%, 100=100%, etc.
 		LPARAMETERS tnWB, tnSheet, tnScale
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7949,7 +7969,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE setsheetvisibility		&& Sets the sheet visibility
+	PROCEDURE SetSheetVisibility		&& Sets the sheet visibility
 		LPARAMETERS tnWB, tnSheet, tnVisiblity
 		LOCAL llReturn, lcAlias
 		llReturn = False
@@ -7966,7 +7986,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE ttoc3		&& Equlivalent of TTOC() function for pre VFP9 support
+	PROTECTED PROCEDURE TTOC3		&& Equlivalent of TTOC() function for pre VFP9 support
 		LPARAMETERS ttime
 		LOCAL lct
 		IF PCOUNT() < 1 OR VARTYPE(m.ttime) != "T"
@@ -7976,7 +7996,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN LEFT(m.lct,4) + "-" + SUBSTR(m.lct,5,2) + "-" + SUBSTR(m.lct,7,2) + "T" + SUBSTR(m.lct,9,2) + ":" + SUBSTR(m.lct,11,2) + ":" + RIGHT(m.lct,2)
 	ENDPROC
 
-	PROCEDURE unfreezepanes		&& Removes the pane freeze from the sheet
+	PROCEDURE UnFreezePanes		&& Removes the pane freeze from the sheet
 		LPARAMETERS tnWB, tnSheet
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -7993,7 +8013,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROCEDURE unmergedcells		&& Unmerges merged cells
+	PROCEDURE UnMergedCells		&& Unmerges merged cells
 		LPARAMETERS tnWB, tnSheet, tnBegRow, tnBegCol, tnEndRow, tnEndCol
 		LOCAL llReturn, lcAlias
 		lcAlias = ALIAS()
@@ -8011,7 +8031,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
-	PROTECTED PROCEDURE writeasinlinestring		&& Writes the value as an inlineStr value
+	PROTECTED PROCEDURE WriteAsInLineString		&& Writes the value as an inlineStr value
 		LPARAMETERS thFile, tnRow, tnCol, txCellValue
 		FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
 		IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
@@ -8030,7 +8050,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		FWRITE(thFile, '</c>')
 	ENDPROC
 
-	PROTECTED PROCEDURE writedirectcellvalue		&& Writes the cell value directly to the sheets xml
+	PROTECTED PROCEDURE WriteDirectCellValue		&& Writes the cell value directly to the sheets xml
 		LPARAMETERS thFile, tnRow, tnCol, txCellValue
 		DO CASE
 			CASE ISNULL(txCellValue)
@@ -8066,7 +8086,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDCASE
 	ENDPROC
 
-	PROTECTED PROCEDURE writedirectxmls		&& Writes the workbook XMLs for direct table/grid to workbook output
+	PROTECTED PROCEDURE WriteDirectXMLs		&& Writes the workbook XMLs for direct table/grid to workbook output
 		LPARAMETERS tcPath, tcSheetName
 		*-*	Create the supporting XML files
 		LOCAL lhFile, lcFileName, loException
@@ -8213,7 +8233,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN ISNULL(loException)
 	ENDPROC
 
-	PROTECTED PROCEDURE writerelationshipsxml		&& Writes the relationships xml file
+	PROTECTED PROCEDURE WriteRelationshipsXML		&& Writes the relationships xml file
 		LPARAMETERS tnWB, tcPath
 		LOCAL lhFile, lcBaseType, llSuccess
 		RAISEEVENT(this, "OnShowStatusMessage", 2, 5)
@@ -8248,7 +8268,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROTECTED PROCEDURE writesheetxmls		&& Writes the Sheet XML files
+	PROTECTED PROCEDURE WriteSheetXMLs		&& Writes the Sheet XML files
 		LPARAMETERS tnWB, tnSheetNbr, tcPath
 		LOCAL llSuccess, lcAlias, lhFile, lcRow, lnMinCol, lnMaxCol, lnWidth, lnLastRow, lcDyDescent
 		LOCAL lcRowDefHt, lcFileName
@@ -8778,7 +8798,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROTECTED PROCEDURE writestringsxml		&& Writes the sharedStrings XML
+	PROTECTED PROCEDURE WriteStringsXML		&& Writes the sharedStrings XML
 		LPARAMETERS tnWB, tcPath
 		LOCAL lcFileName, lhFile, lnTotCount, lnUniqueCnt, loException, llSuccess
 		RAISEEVENT(this, "OnShowStatusMessage", 2, 2)
@@ -8875,7 +8895,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROTECTED PROCEDURE writestylesxml		&& Writes the styles.xml support file
+	PROTECTED PROCEDURE WriteStylesXML		&& Writes the styles.xml support file
 		LPARAMETERS tnWB, tcPath
 		LOCAL lcAlias, lcFileName, lhFile, lnNumFmtsId, lnRecCount, lcNumFmtId, lnRotation, llIndexedColors
 		LOCAL llMruColors
@@ -9222,7 +9242,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROTECTED PROCEDURE writesupportxmls		&& Writes the [Content_Types].xml, .rels, core.xml, workbook.xml.rels and app.xml files
+	PROTECTED PROCEDURE WriteSupportXMLs		&& Writes the [Content_Types].xml, .rels, core.xml, workbook.xml.rels and app.xml files
 		LPARAMETERS tnWB, tcPath
 		LOCAL llSuccess, loException, lhFile, lnSheet, lnUniqueCnt, lcCurr, lcColor, lnTotCount, lcFileName, lcBaseContentType
 		RAISEEVENT(this, "OnShowStatusMessage", 2, 1)
@@ -9345,7 +9365,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llSuccess
 	ENDPROC
 
-	PROTECTED PROCEDURE writeworkbookxml		&& Writes the workbook XML
+	PROTECTED PROCEDURE WriteWorkbookXML		&& Writes the workbook XML
 		LPARAMETERS tnWB, tcPath
 		LOCAL lcFileName, lhFile, loException, llSuccess, lcSheetName
 		RAISEEVENT(this, "OnShowStatusMessage", 2, 4)
