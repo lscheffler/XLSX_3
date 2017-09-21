@@ -244,7 +244,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultfontsize = 11		&& Default font size ***Integer
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 27		&& Release version of Class ***Integer
+	excelxlsxrelease = 28		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -5316,8 +5316,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROCEDURE SaveGridToWorkbook		&& Saves the selected grid to a workbook
-		LPARAMETERS toGrid, txWB, tlFreeze, tlSaveWB, tcSheetName
-		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, loColumn, lnStyle
+		LPARAMETERS toGrid, txWB, tlFreeze, tlSaveWB, tcSheetName, tlInclHiddenCols
+		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, loColumn, lnStyle, lnColCount
 		LOCAL ARRAY laRowCount[1], laColOrder[1]
 		loReturn = CREATEOBJECT("Empty")
 		ADDPROPERTY(loReturn, "Workbook",  0)
@@ -5330,22 +5330,26 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				RETURN loReturn
 		
 			CASE PCOUNT() = 2
-				tlFreeze = True
-				tlSaveWB = True
-				tcSheetName = this.DeriveSheetName(txWB)
+				tlFreeze     = True
+				tlSaveWB     = True
+				tcSheetName  = this.DeriveSheetName(txWB)
+				tlInclHiddenCols = True
 		
 			CASE PCOUNT() = 3
-				tlSaveWB = True
-				tcSheetName = this.DeriveSheetName(txWB)
+				tlSaveWB     = True
+				tcSheetName  = this.DeriveSheetName(txWB)
+				tlInclHiddenCols = True
 		
 			CASE PCOUNT() = 4
-				tcSheetName = this.DeriveSheetName(txWB)
+				tcSheetName  = this.DeriveSheetName(txWB)
+				tlInclHiddenCols = True
 			
-			OTHERWISE
-				IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
-					tcSheetName = this.DeriveSheetName(txWB)
-				ENDIF
+			CASE PCOUNT() = 5
+				tlInclHiddenCols = True
 		ENDCASE
+		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
+			tcSheetName = this.DeriveSheetName(txWB)
+		ENDIF
 		IF VARTYPE(toGrid) != "O" .AND. PEMSTATUS(toGrid, "BaseClass", 5) .AND. LOWER(toGrid.BaseClass) != "grid"
 			RETURN loReturn
 		ENDIF
@@ -5375,25 +5379,42 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				SELECT COUNT(*) FROM &lcAlias INTO ARRAY laRowCount
 				RAISEEVENT(this, "OnShowStatusMessage", 3, 0, laRowCount[1])
 		
-		*-*		Get the column output order based on grid display order          && Change requested by Matt Slay to output by grid display order
-				DIMENSION laColOrder[lnFldCnt, 2]
-				FOR lnCol=1 TO lnFldCnt
-					laColOrder[lnCol, 1] = toGrid.Columns(lnCol).ColumnOrder     && Grid display order
-					laColOrder[lnCol, 2] = lnCol                                 && Column property order
-				ENDFOR
+		*-*		Get the number of columns to process and
+		*-*		Get the column output order based on grid display order                       && Change requested by Matt Slay to output by grid display order and visible setting
+				IF tlInclHiddenCols
+					lnColCount = toGrid.ColumnCount
+					DIMENSION laColOrder[lnColCount, 2]
+					FOR lnCol=1 TO toGrid.ColumnCount
+						laColOrder[lnCol, 1] = toGrid.Columns(lnCol).ColumnOrder              && Grid display order
+						laColOrder[lnCol, 2] = lnCol                                          && Column property order
+					ENDFOR
+				ELSE
+					lnColCount = 0
+					FOR lnCol=1 TO toGrid.ColumnCount
+						IF toGrid.Columns(lnCol).Visible
+							lnColCount = lnColCount + 1
+							DIMENSION laColOrder[lnColCount, 2]
+							laColOrder[lnColCount, 1] = toGrid.Columns(lnCol).ColumnOrder     && Grid display order
+							laColOrder[lnColCount, 2] = lnCol                                 && Column property order
+						ENDIF
+					ENDFOR
+				ENDIF
+				IF lnColCount = 0
+					RETURN False
+				ENDIF
 				ASORT(laColOrder)
 		
 		*-*		Add the header row if defined and set the column widths; get the column font info
-				IF toGrid.HeaderHeight > 0                                       && Change recommendation by Doug Hennig (if no headers, start in first row)
+				IF toGrid.HeaderHeight > 0                                                    && Change recommendation by Doug Hennig (if no headers, start in first row)
 					lnRow = 1
-					FOR lnCol=1 TO toGrid.ColumnCount
+					FOR lnCol=1 TO lnColCount
 						loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 						this.SetCellValue(lnWB, lnSh, 1, lnCol, loColumn.Header1.Caption)
 						this.SetColumnWidth(lnWB, lnSh, lnCol, this.ConvertPixelsToExcelUnits(loColumn.Width))
 					ENDFOR
 				ELSE
 					lnRow = 0
-					FOR lnCol=1 TO toGrid.ColumnCount
+					FOR lnCol=1 TO lnColCount
 						loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 						this.SetColumnWidth(lnWB, lnSh, lnCol, this.ConvertPixelsToExcelUnits(loColumn.Width))
 					ENDFOR
@@ -5404,7 +5425,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				SCAN
 					lnRow = lnRow + 1
 					RAISEEVENT(this, "OnShowStatusMessage", 3, lnRow)
-					FOR lnCol=1 TO toGrid.ColumnCount
+					FOR lnCol=1 TO lnColCount
 						loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 						lcField  = loColumn.ControlSource
 						this.SetCellValue(lnWB, lnSh, lnRow, lnCol, &lcField)
@@ -5412,7 +5433,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				ENDSCAN
 		
 		*-*		Set the cell style formatting
-				FOR lnCol=1 TO toGrid.ColumnCount
+				FOR lnCol=1 TO lnColCount
 					loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 					lnStyle  = this.CreateFormatStyle(lnWB)
 					IF this.DefaultFont != loColumn.FontName .OR. this.DefaultFontSize != loColumn.FontSize   && Change recommended by Doug Hennig; 2017-06-12
@@ -5439,9 +5460,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROCEDURE SaveGridToWorkbookEx		&& Saves the passed grid to a workbook without adding the content to the internal cursors
-		LPARAMETERS toGrid, tcFileName, tlFreeze, tcSheetName
+		LPARAMETERS toGrid, tcFileName, tlFreeze, tcSheetName, tlInclHiddenCols
 		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentury, lxCellValue
-		LOCAL lnFldCnt, lnColWidth
+		LOCAL lnColCount, lnColWidth
 		LOCAL ARRAY laColOrder[1]
 		llError = False
 		DO CASE
@@ -5449,11 +5470,16 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				RETURN False
 		
 			CASE PCOUNT() = 2
-				tlFreeze    = True
-				tcSheetName = toGrid.Name
+				tlFreeze     = True
+				tcSheetName  = toGrid.Name
+				tlInclHiddenCols = True
 		
 			CASE PCOUNT() = 3
-				tcSheetName = toGrid.Name
+				tcSheetName  = toGrid.Name
+				tlInclHiddenCols = True
+		
+			CASE PCOUNT() = 4
+				tlInclHiddenCols = True
 		ENDCASE
 		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
 			tcSheetName = toGrid.Name
@@ -5475,7 +5501,32 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		*-*	Output the workbook
 		lcAlias  = JUSTSTEM(toGrid.RecordSource)
-		lnFldCnt = toGrid.ColumnCount
+		
+		*-*	Get the number of columns to process
+		*-*	Get the column output order based on grid display order                          && Change requested by Matt Slay to output by grid display order and visible setting
+		IF tlInclHiddenCols
+			lnColCount = toGrid.ColumnCount
+			DIMENSION laColOrder[lnColCount, 2]
+			FOR lnCol=1 TO toGrid.ColumnCount
+				laColOrder[lnCol, 1] = toGrid.Columns(lnCol).ColumnOrder                     && Grid display order
+				laColOrder[lnCol, 2] = lnCol                                                 && Column property order
+			ENDFOR
+		ELSE
+			lnColCount = 0
+			FOR lnCol=1 TO toGrid.ColumnCount
+				IF toGrid.Columns(lnCol).Visible
+					lnColCount = lnColCount + 1
+					DIMENSION laColOrder[lnColCount, 2]
+					laColOrder[lnColCount, 1] = toGrid.Columns(lnCol).ColumnOrder             && Grid display order
+					laColOrder[lnColCount, 2] = lnCol                                         && Column property order
+				ENDIF
+			ENDFOR
+		ENDIF
+		IF lnColCount = 0
+			RETURN False
+		ENDIF
+		ASORT(laColOrder)
+		
 		IF this.WriteDirectXMLs(lcTempPath, tcSheetName)
 		*-*	Write the sheet XML
 			TRY
@@ -5493,7 +5544,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				FWRITE(lhFile, ' xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">')
 			
 		*-*		Write the sheet view information which includes the freeze pane information
-				FWRITE(lhFile, '<dimension ref="A1:' + this.ColumnIndexToAscii(lnFldCnt) + TRANSFORM(RECCOUNT(lcAlias)+1) + '"/>')
+				FWRITE(lhFile, '<dimension ref="A1:' + this.ColumnIndexToAscii(lnColCount) + TRANSFORM(RECCOUNT(lcAlias)+1) + '"/>')
 				IF tlFreeze
 					FWRITE(lhFile, '<sheetViews><sheetView workbookViewId="0">')
 					FWRITE(lhFile, '<pane state="frozenSplit" activePane="bottomLeft" topLeftCell="A2" ySplit="1"/>')
@@ -5502,17 +5553,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				ENDIF
 				FWRITE(lhFile, '<sheetFormatPr defaultRowHeight="15"/>')
 		
-		*-*		Get the column output order based on grid display order          && Change requested by Matt Slay to output by grid display order
-				DIMENSION laColOrder[lnFldCnt, 2]
-				FOR lnCol=1 TO lnFldCnt
-					laColOrder[lnCol, 1] = toGrid.Columns(lnCol).ColumnOrder     && Grid display order
-					laColOrder[lnCol, 2] = lnCol                                 && Column property order
-				ENDFOR
-				ASORT(laColOrder)
-		
 		*-*		Write sheet Column widths
 				FWRITE(lhFile, '<cols>')
-				FOR lnCol=1 TO lnFldCnt
+				FOR lnCol=1 TO lnColCount
 					lnColWidth = this.ConvertPixelsToExcelUnits(toGrid.Columns(laColOrder[lnCol, 2]).Width)
 					FWRITE(lhFile, '<col min="' + TRANSFORM(lnCol) + '" max="' + TRANSFORM(lnCol) + '" width="' + TRANSFORM(lnColWidth+0.7109375) + '" customWidth="1"/>')
 				ENDFOR
@@ -5523,9 +5566,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				FWRITE(lhFile, '<sheetData>')
 			
 		*-*		Place field names in the first row
-				IF toGrid.HeaderHeight > 0                                       && Change recommendation by Doug Hennig (if no headers, then no output)
-					FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
-					FOR lnCol=1 TO lnFldCnt
+				IF toGrid.HeaderHeight > 0                                               && Change recommendation by Doug Hennig (if no headers, then no output)
+					FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
+					FOR lnCol=1 TO lnColCount
 						this.WriteAsInLineString(lhFile, 1, lnCol, toGrid.Columns(laColOrder[lnCol, 2]).Header1.Caption)
 					ENDFOR
 					FWRITE(lhFile, '</row>')
@@ -5540,8 +5583,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				SELECT &lcAlias
 				SCAN
 					lnRow = lnRow + 1
-					FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
-					FOR lnCol=1 TO lnFldCnt
+					FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
+					FOR lnCol=1 TO lnColCount
 						lxCellValue = EVALUATE(toGrid.Columns(laColOrder[lnCol, 2]).ControlSource)
 						this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
 					ENDFOR
