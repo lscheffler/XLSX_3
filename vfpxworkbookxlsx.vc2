@@ -193,7 +193,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: ttoc3		&& Equlivalent of TTOC() function for pre VFP9 support
 		*m: unfreezepanes		&& Removes the pane freeze from the sheet
 		*m: unmergedcells		&& Unmerges merged cells
+		*m: writeasinlineformattedstring		&& Writes the string as formatted in-line
 		*m: writeasinlinestring		&& Writes the value as an inlineStr value
+		*m: writedirectcellformattedvalue		&& WriteDirectCellFormattedValue
 		*m: writedirectcellvalue		&& Writes the cell value directly to the sheets xml
 		*m: writedirectxmls		&& Writes the workbook XMLs for direct table/grid to workbook output
 		*m: writerelationshipsxml		&& Writes the relationships xml file
@@ -244,7 +246,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultfontsize = 11		&& Default font size ***Integer
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 28		&& Release version of Class ***Integer
+	excelxlsxrelease = 29		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -267,7 +269,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="saveasutf8" type="method" display="SaveAsUTF8"/>
 		<memberdata name="savegridtoworkbookex" type="method" display="SaveGridToWorkbookEx"/>
 		<memberdata name="savetabletoworkbookex" type="method" display="SaveTableToWorkbookEx"/>
+		<memberdata name="writeasinlineformattedstring" type="method" display="WriteAsInLineFormattedString"/>
 		<memberdata name="writeasinlinestring" type="method" display="WriteAsInLineString"/>
+		<memberdata name="writedirectcellformattedvalue" type="method" display="WriteDirectCellFormattedValue"/>
 		<memberdata name="writedirectcellvalue" type="method" display="WriteDirectCellValue"/>
 		<memberdata name="writedirectxmls" type="method" display="WriteDirectXMLs"/>
 		</VFPData>		&& XML Metadata for customizable properties
@@ -3771,10 +3775,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROTECTED PROCEDURE Init
 		LPARAMETERS tnCodePage
-		LOCAL loException
+		LOCAL loException, lnSelect
 		IF PCOUNT() > 0 .AND. VARTYPE(tnCodePage) = "N"
 			this.CodePage = tnCodePage
 		ENDIF
+		lnSelect = SELECT()
 		this.CreateWorkingCursors()
 		IF this.DeclareWinAPI
 			this.DeclareDLL()
@@ -3786,6 +3791,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDTRY
 		this.InitalizeIdValues()
 		this.OnInit()
+		SELECT (lnSelect)
 	ENDPROC
 
 	PROTECTED PROCEDURE InitalizeIdValues		&& Initializes the internal Id values
@@ -4439,7 +4445,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROTECTED PROCEDURE ReadCellValueFormat		&& Reads the cell value and format for a sheet
 		LPARAMETERS tnWB, tcColumn, tnCellCol
 		LOCAL lcCellType, lnNode, lcBaseName, lcFormatCode, lnNdx, loCellFormat, lcWholeNbr, lcDecNbr
-		LOCAL lcPosFormat, lcNegFormat, lcZerFormat
+		LOCAL lcPosFormat, lcNegFormat, lcZerFormat, lcInLineTxt
 		loCellFormat = CREATEOBJECT("Empty")
 		ADDPROPERTY(loCellFormat, "CellVal", "")
 		ADDPROPERTY(loCellFormat, "DataType", DATA_TYPE_NONE)
@@ -4457,6 +4463,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 				CASE lcChild = "<v"                                   && Value assigned to cell
 					loCellFormat.CellVal = this.GetNodeElementValue(lcChild)
+		
+				CASE lcChild = "<is"                                  && Value assigned to cell as inline text
+					lcInLineTxt = this.GetNodeElement(lcChild, 't', 1)
+					loCellFormat.CellVal = this.GetNodeElementValue(lcInLineTxt)
 			ENDCASE
 		ENDFOR
 		
@@ -5462,7 +5472,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROCEDURE SaveGridToWorkbookEx		&& Saves the passed grid to a workbook without adding the content to the internal cursors
 		LPARAMETERS toGrid, tcFileName, tlFreeze, tcSheetName, tlInclHiddenCols
 		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentury, lxCellValue
-		LOCAL lnColCount, lnColWidth
+		LOCAL lnColCount, lnColWidth, lcCurAlias
 		LOCAL ARRAY laColOrder[1]
 		llError = False
 		DO CASE
@@ -5484,6 +5494,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
 			tcSheetName = toGrid.Name
 		ENDIF
+		lcCurAlias = ALIAS()
 		
 		*-* Set temporary output path
 		lcTempPath = this.CreateWorkingDirectories()
@@ -5500,7 +5511,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 		
 		*-*	Output the workbook
-		lcAlias  = JUSTSTEM(toGrid.RecordSource)
+		lcAlias = JUSTSTEM(toGrid.RecordSource)
 		
 		*-*	Get the number of columns to process
 		*-*	Get the column output order based on grid display order                          && Change requested by Matt Slay to output by grid display order and visible setting
@@ -5568,9 +5579,15 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*-*		Place field names in the first row
 				IF toGrid.HeaderHeight > 0                                               && Change recommendation by Doug Hennig (if no headers, then no output)
 					FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
-					FOR lnCol=1 TO lnColCount
-						this.WriteAsInLineString(lhFile, 1, lnCol, toGrid.Columns(laColOrder[lnCol, 2]).Header1.Caption)
-					ENDFOR
+					IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
+						FOR lnCol=1 TO lnColCount
+							this.WriteAsInLineString(lhFile, 1, lnCol, toGrid.Columns(laColOrder[lnCol, 2]).Header1.Caption)
+						ENDFOR
+					ELSE
+						FOR lnCol=1 TO lnColCount
+							this.WriteAsInLineFormattedString(lhFile, 1, lnCol, toGrid.Columns(laColOrder[lnCol, 2]).Header1.Caption)
+						ENDFOR
+					ENDIF
 					FWRITE(lhFile, '</row>')
 					lnRow = 1
 				ELSE
@@ -5581,15 +5598,27 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				lcSETCentury = SET("CENTURY")
 				SET CENTURY ON
 				SELECT &lcAlias
-				SCAN
-					lnRow = lnRow + 1
-					FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
-					FOR lnCol=1 TO lnColCount
-						lxCellValue = EVALUATE(toGrid.Columns(laColOrder[lnCol, 2]).ControlSource)
-						this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
-					ENDFOR
-					FWRITE(lhFile, '</row>')
-				ENDSCAN
+				IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
+					SCAN
+						lnRow = lnRow + 1
+						FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
+						FOR lnCol=1 TO lnColCount
+							lxCellValue = EVALUATE(toGrid.Columns(laColOrder[lnCol, 2]).ControlSource)
+							this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
+						ENDFOR
+						FWRITE(lhFile, '</row>')
+					ENDSCAN
+				ELSE
+					SCAN
+						lnRow = lnRow + 1
+						FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
+						FOR lnCol=1 TO lnColCount
+							lxCellValue = EVALUATE(toGrid.Columns(laColOrder[lnCol, 2]).ControlSource)
+							this.WriteDirectCellFormattedValue(lhFile, lnRow, lnCol, lxCellValue)
+						ENDFOR
+						FWRITE(lhFile, '</row>')
+					ENDSCAN
+				ENDIF
 				SET CENTURY &lcSETCentury
 		
 		*-*		End the sheet cell data values and worksheet
@@ -5609,15 +5638,20 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDTRY
 			IF llError
 				llSuccess = False
+			ELSE
+		*-*		Create the XLSX file
+				this.CreateExcelFile(lcTempPath, JUSTPATH(tcFileName), JUSTSTEM(tcFileName))    && Change recommendation by Doug Hennig [placement of code after ELSE]
+				llSuccess = True
 			ENDIF
-		
-		*-*	Create the XLSX file
-			this.CreateExcelFile(lcTempPath, JUSTPATH(tcFileName), JUSTSTEM(tcFileName))
 			this.RemoveWorkingDirectories(lcTempPath)
-			llSuccess = True
+		
 		ELSE
 			llSuccess = False
 		ENDIF
+		IF !EMPTY(lcCurAlias)
+			SELECT (lcCurAlias)
+		ENDIF
+		
 		*-*	Restore default settings
 		IF lcSetPoint != "."
 			SET POINT TO (lcSetPoint)
@@ -5784,9 +5818,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
 			tcSheetName = JUSTSTEM(tcAlias)
 		ENDIF
+		lcCurAlias = ALIAS()
 		DO CASE
 			CASE USED(tcAlias)
-				lcCurAlias  = ALIAS()
 				llOpenedTbl = False
 				lcAlias = tcAlias
 		
@@ -5873,25 +5907,42 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*-*		Place field names in the first row
 				lcRowDefHt = ' ht="30"'
 				FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
-				FOR lnCol=1 TO lnFldCnt
-					FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + '1" t="inlineStr">')
-					FWRITE(lhFile, '<is><t>' + taFields[lnCol, 2] + '</t></is></c>')
-				ENDFOR
+				IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
+					FOR lnCol=1 TO lnFldCnt
+						this.WriteAsInLineString(lhFile, 1, lnCol, taFields[lnCol, 2])
+					ENDFOR
+				ELSE
+					FOR lnCol=1 TO lnFldCnt
+						this.WriteAsInLineFormattedString(lhFile, 1, lnCol, taFields[lnCol, 2])
+					ENDFOR
+				ENDIF
 				FWRITE(lhFile, '</row>')
 			
 		*-*		Write the table field values to cells
 				lcSETCentry = SET("CENTURY")
 				SET CENTURY ON
 				lnRow = 1
-				SCAN
-					lnRow = lnRow + 1
-					FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
-					FOR lnCol=1 TO lnFldCnt
-						lxCellValue = EVALUATE(lcAlias + '.' + taFields[lnCol, 1])
-						this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
-					ENDFOR
-					FWRITE(lhFile, '</row>')
-				ENDSCAN
+				IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
+					SCAN
+						lnRow = lnRow + 1
+						FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
+						FOR lnCol=1 TO lnFldCnt
+							lxCellValue = EVALUATE(lcAlias + '.' + taFields[lnCol, 1])
+							this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
+						ENDFOR
+						FWRITE(lhFile, '</row>')
+					ENDSCAN
+				ELSE
+					SCAN
+						lnRow = lnRow + 1
+						FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnFldCnt) + '"' + lcRowDefHt + '>')
+						FOR lnCol=1 TO lnFldCnt
+							lxCellValue = EVALUATE(lcAlias + '.' + taFields[lnCol, 1])
+							this.WriteDirectCellFormattedValue(lhFile, lnRow, lnCol, lxCellValue)
+						ENDFOR
+						FWRITE(lhFile, '</row>')
+					ENDSCAN
+				ENDIF
 				SET CENTURY &lcSETCentry
 			
 		*-*		End the sheet cell data values and worksheet
@@ -5911,13 +5962,17 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDTRY
 			IF llError
 				llSuccess = False
+			ELSE
+		*-*		Create the XLSX file
+				this.CreateExcelFile(lcTempPath, JUSTPATH(tcXlsxName), JUSTSTEM(tcXlsxName))    && Change recommendation by Doug Hennig [placement of code after ELSE]
+				llSuccess = True
 			ENDIF
-		*-*	Create the XLSX file
-			this.CreateExcelFile(lcTempPath, JUSTPATH(tcXlsxName), JUSTSTEM(tcXlsxName))
 			this.RemoveWorkingDirectories(lcTempPath)
-			llSuccess = True
 		ELSE
 			llSuccess = False
+		ENDIF
+		IF !EMPTY(lcCurAlias)
+			SELECT (lcCurAlias)
 		ENDIF
 		
 		*-*	Restore default settings
@@ -8074,23 +8129,62 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
+	PROTECTED PROCEDURE WriteAsInLineFormattedString		&& Writes the string as formatted in-line
+		LPARAMETERS thFile, tnRow, tnCol, txCellValue
+		FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+		FWRITE(thFile, '<is>')
+		FWRITE(thFile, '<r>')
+		FWRITE(thFile, '<rPr>')
+		FWRITE(thFile, '<sz val="' + TRANSFORM(this.DefaultFontSize) + '"/>')
+		FWRITE(thFile, '<rFont val="' + this.DefaultFont + '"/>')
+		FWRITE(thFile, '</rPr>')
+		FWRITE(thFile, '<t>' + this.GetXMLString(txCellValue) + '</t>')
+		FWRITE(thFile, '</r>')
+		FWRITE(thFile, '</is>')
+		FWRITE(thFile, '</c>')
+	ENDPROC
+
 	PROTECTED PROCEDURE WriteAsInLineString		&& Writes the value as an inlineStr value
 		LPARAMETERS thFile, tnRow, tnCol, txCellValue
 		FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
-		IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
-			FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is>')
-		ELSE
-			FWRITE(thFile, '<is>')
-			FWRITE(thFile, '<r>')
-			FWRITE(thFile, '<rPr>')
-			FWRITE(thFile, '<sz val="' + TRANSFORM(this.DefaultFontSize) + '"/>')
-			FWRITE(thFile, '<rFont val="' + this.DefaultFont + '"/>')
-			FWRITE(thFile, '</rPr>')
-			FWRITE(thFile, '<t>' + this.GetXMLString(txCellValue) + '</t>')
-			FWRITE(thFile, '</r>')
-			FWRITE(thFile, '</is>')
-		ENDIF
+		FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is>')
 		FWRITE(thFile, '</c>')
+	ENDPROC
+
+	PROTECTED PROCEDURE WriteDirectCellFormattedValue		&& WriteDirectCellFormattedValue
+		LPARAMETERS thFile, tnRow, tnCol, txCellValue
+		DO CASE
+			CASE ISNULL(txCellValue)
+				RETURN
+		
+			CASE INLIST(VARTYPE(txCellValue), "C", "D", "T") .AND. EMPTY(txCellValue)
+				RETURN
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_DATE
+				this.WriteAsInLineFormattedString(thFile, tnRow, tnCol, TRANSFORM(txCellValue))
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_DATETIME
+				this.WriteAsInLineFormattedString(thFile, tnRow, tnCol, TTOC(txCellValue))
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_LOGICAL
+				txCellValue = IIF(txCellValue, GETWORDNUM(this.TrueFalseValue, 1, "|"), GETWORDNUM(this.TrueFalseValue, 2, "|"))
+				this.WriteAsInLineFormattedString(thFile, tnRow, tnCol, txCellValue)
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_CURRENCY
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="n">')
+				FWRITE(thFile, '<v>' + TRANSFORM(MTON(txCellValue)) + '</v></c>')
+		
+			CASE VARTYPE(txCellValue) = DATA_TYPE_CHAR
+				this.WriteAsInLineFormattedString(thFile, tnRow, tnCol, ALLTRIM(txCellValue))
+		
+			CASE INLIST(VARTYPE(txCellValue), DATA_TYPE_INT, DATA_TYPE_FLOAT)
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="n">')
+				FWRITE(thFile, '<v>' + TRANSFORM(txCellValue) + '</v></c>')
+		
+			OTHERWISE
+				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
+				FWRITE(thFile, '<is><t>Unsupported Field Type</t></is></c>')
+		ENDCASE
 	ENDPROC
 
 	PROTECTED PROCEDURE WriteDirectCellValue		&& Writes the cell value directly to the sheets xml
