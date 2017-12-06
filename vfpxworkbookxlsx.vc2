@@ -204,6 +204,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: writestylesxml		&& Writes the styles.xml support file
 		*m: writesupportxmls		&& Writes the [Content_Types].xml, .rels, core.xml, workbook.xml.rels and app.xml files
 		*m: writeworkbookxml		&& Writes the workbook XML
+		*p: autotrimsheetname		&& Indicates to auto-trim sheet name to max length ***Boolean
 		*p: codepage		&& CodePage to use for the Strings cursor
 		*p: companyname		&& Company Name
 		*p: creatorname		&& Creator Name
@@ -236,6 +237,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROTECTED destroy,init
 	AutoSize = .T.
+	autotrimsheetname = .T.		&& Indicates to auto-trim sheet name to max length ***Boolean
 	Caption = "clsVFPxWorkbookXLSX"
 	codepage = 0		&& CodePage to use for the Strings cursor
 	companyname = VFPxWorkbookXLSX		&& Company Name
@@ -246,7 +248,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultfontsize = 11		&& Default font size ***Integer
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 29		&& Release version of Class ***Integer
+	excelxlsxrelease = 30		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -258,6 +260,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	Visible = .F.
 	Width = 129
 	_memberdata = <VFPData>
+		<memberdata name="autotrimsheetname" type="property" display="AutoTrimSheetName"/>
 		<memberdata name="defaultfontsize" type="property" display="DefaultFontSize"/>
 		<memberdata name="cellrefasciitoindex" type="method" display="CellRefAsciiToIndex"/>
 		<memberdata name="getchecksum" type="method" display="GetCheckSum"/>
@@ -606,8 +609,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDIF
 			tcSheetName = CHRTRAN(tcSheetName, ":\/?*", "_____")
 			IF LEN(tcSheetName) > LIMITS_MAX_SH_NAME
-				this.SetLastId(tnWB, lnShId-1, "xl_sheets")
-				RETURN 0
+				IF this.AutoTrimSheetName
+					tcSheetName = LEFT(ALLTRIM(tcSheetName), LIMITS_MAX_SH_NAME)
+				ELSE
+					this.SetLastId(tnWB, lnShId-1, "xl_sheets")
+					RETURN 0
+				ENDIF
 			ENDIF
 			IF SEEK(BINTOC(tnWB)+UPPER(PADR(tcSheetName, LEN(xl_sheets.shname))), "xl_sheets", "shname")    && Change recommendation by Doug Hennig
 				lnShId = 0
@@ -3130,21 +3137,20 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROCEDURE GetLastRowNumber		&& Returns the last row number in the sheet
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lnLastRow
+		LOCAL ARRAY laMaxRow[1]
 		IF PCOUNT() < 2
 			RETURN .NULL.
 		ENDIF
-		lnLastRow = 0
-		SELECT MAX(tmp.cellrow) AS maxrow FROM xl_cells AS tmp ;
+		SELECT MAX(cellrow) FROM xl_cells ;
 			WHERE workbook = tnWB ;
-				AND tmp.sheet = tnSheet ;
-				AND tmp.celldeleted = False ;
-			INTO CURSOR t_temp
+				AND sheet = tnSheet ;
+				AND celldeleted = False ;
+			INTO ARRAY laMaxRow
 		
 		IF _TALLY > 0
-			lnLastRow = t_temp.maxrow
-		ENDIF
-		IF USED('t_temp')
-			USE IN t_temp
+			lnLastRow = laMaxRow[1]
+		ELSE
+			lnLastRow = 0
 		ENDIF
 		RETURN lnLastRow
 	ENDPROC
@@ -3152,20 +3158,20 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROCEDURE GetMaxColumnNumber		&& Returns the max column number for a sheet
 		LPARAMETERS tnWB, tnSheet
 		LOCAL lnMaxCol
+		LOCAL ARRAY laMaxCol[1]
 		IF PCOUNT() < 2
 			RETURN .NULL.
 		ENDIF
 		SELECT MAX(tmp.maxcol) AS maxcol FROM xl_rows AS tmp ;
 			WHERE tmp.workbook = tnWB ;
 				AND tmp.sheet = tnSheet ;
-			INTO CURSOR xl_temp
+			INTO ARRAY laMaxCol
 		
 		IF _TALLY > 0
-			lnMaxCol = xl_temp.maxcol
+			lnMaxCol = laMaxCol[1]
 		ELSE
 			lnMaxCol = 0
 		ENDIF
-		USE IN SELECT('xl_temp')
 		RETURN NVL(lnMaxCol, 0)
 	ENDPROC
 
@@ -5360,6 +5366,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
 			tcSheetName = this.DeriveSheetName(txWB)
 		ENDIF
+		tcSheetName = CHRTRAN(tcSheetName, ":\/?*", "_____")
+		IF LEN(tcSheetName) > LIMITS_MAX_SH_NAME
+			IF this.AutoTrimSheetName
+				tcSheetName = LEFT(ALLTRIM(tcSheetName), LIMITS_MAX_SH_NAME)
+			ELSE
+				RETURN loReturn
+			ENDIF
+		ENDIF
 		IF VARTYPE(toGrid) != "O" .AND. PEMSTATUS(toGrid, "BaseClass", 5) .AND. LOWER(toGrid.BaseClass) != "grid"
 			RETURN loReturn
 		ENDIF
@@ -5474,7 +5488,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentury, lxCellValue
 		LOCAL lnColCount, lnColWidth, lcCurAlias
 		LOCAL ARRAY laColOrder[1]
-		llError = False
+		llError    = False
+		lcCurAlias = ALIAS()
 		DO CASE
 			CASE PCOUNT() < 2
 				RETURN False
@@ -5494,7 +5509,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
 			tcSheetName = toGrid.Name
 		ENDIF
-		lcCurAlias = ALIAS()
+		tcSheetName = CHRTRAN(tcSheetName, ":\/?*", "_____")
+		IF LEN(tcSheetName) > LIMITS_MAX_SH_NAME
+			IF this.AutoTrimSheetName
+				tcSheetName = LEFT(ALLTRIM(tcSheetName), LIMITS_MAX_SH_NAME)
+			ELSE
+				RETURN False
+			ENDIF
+		ENDIF
 		
 		*-* Set temporary output path
 		lcTempPath = this.CreateWorkingDirectories()
@@ -5687,6 +5709,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
 			tcSheetName = this.DeriveSheetName(tnWB)
 		ENDIF
+		tcSheetName = CHRTRAN(tcSheetName, ":\/?*", "_____")
+		IF LEN(tcSheetName) > LIMITS_MAX_SH_NAME
+			IF this.AutoTrimSheetName
+				tcSheetName = LEFT(ALLTRIM(tcSheetName), LIMITS_MAX_SH_NAME)
+			ELSE
+				RETURN loReturn
+			ENDIF
+		ENDIF
 		DO CASE
 			CASE USED(tcAlias)
 				lcCurAlias  = ALIAS()
@@ -5817,6 +5847,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDCASE
 		IF VARTYPE(tcSheetName) != 'C' .OR. EMPTY(tcSheetName)
 			tcSheetName = JUSTSTEM(tcAlias)
+		ENDIF
+		tcSheetName = CHRTRAN(tcSheetName, ":\/?*", "_____")
+		IF LEN(tcSheetName) > LIMITS_MAX_SH_NAME
+			IF this.AutoTrimSheetName
+				tcSheetName = LEFT(ALLTRIM(tcSheetName), LIMITS_MAX_SH_NAME)
+			ELSE
+				RETURN False
+			ENDIF
 		ENDIF
 		lcCurAlias = ALIAS()
 		DO CASE
