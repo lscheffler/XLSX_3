@@ -124,6 +124,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: insertrow		&& Inserts a new row into the sheet
 		*m: iscellformula		&& Returns True if cell contains a formula
 		*m: iscellreferenceinvalid		&& Checks if the cell reference is invalid (outside of limits)
+		*m: isformatstyledefined		&& Determines if the format is defined as a style
 		*m: isvalidborderstyle		&& Validates the border style value
 		*m: mergecells		&& Merges cells together
 		*m: ondestroy		&& Called by the Destroy() event - user implementation
@@ -144,6 +145,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: saveasutf8		&& Saves the file as a UTF-8
 		*m: savegridtoworkbook		&& Saves the selected grid to a workbook
 		*m: savegridtoworkbookex		&& Saves the passed grid to a workbook without adding the content to the internal cursors
+		*m: savemultigridtoworkbookex		&& Same as SaveGridToWorkbookEx() method but handles multiple grids being passed
 		*m: savetabletoworkbook		&& Saves the table passed (alias) as a workbook sheet
 		*m: savetabletoworkbookex		&& Creates a new workbook from a table; direct write to XLSX file without loading internal cursors
 		*m: saveworkbook		&& Saves the selected workbook as an XLSX file
@@ -248,7 +250,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultfontsize = 11		&& Default font size ***Integer
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 30		&& Release version of Class ***Integer
+	excelxlsxrelease = 31		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	oxdom = 		&& XML DOM Object
@@ -269,8 +271,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="insertcell" type="method" display="InsertCell"/>
 		<memberdata name="insertcolumn" type="method" display="InsertColumn"/>
 		<memberdata name="insertrow" type="method" display="InsertRow"/>
+		<memberdata name="isformatstyledefined" type="method" display="IsFormatStyleDefined"/>
 		<memberdata name="saveasutf8" type="method" display="SaveAsUTF8"/>
 		<memberdata name="savegridtoworkbookex" type="method" display="SaveGridToWorkbookEx"/>
+		<memberdata name="savemultigridtoworkbookex" type="method" display="SaveMultiGridToWorkbookEx"/>
 		<memberdata name="savetabletoworkbookex" type="method" display="SaveTableToWorkbookEx"/>
 		<memberdata name="writeasinlineformattedstring" type="method" display="WriteAsInLineFormattedString"/>
 		<memberdata name="writeasinlinestring" type="method" display="WriteAsInLineString"/>
@@ -587,25 +591,25 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				CASE PCOUNT() = 0
 				
 				CASE PCOUNT() = 1
-					tcSheetName = "Sheet" + TRANSFORM(lnShId) + 1
+					tcSheetName = "Sheet" + TRANSFORM(lnShId + 1)        && Bug fix identified by Dan Lauer
 					tnState = VISIBLE_SHEET_STATE
 				
 				CASE PCOUNT() = 2
 					IF VARTYPE(tcSheetName) != "C"
-						tcSheetName = "Sheet" + TRANSFORM(lnShId) + 1
+						tcSheetName = "Sheet" + TRANSFORM(lnShId + 1)
 					ENDIF
 					tnState = VISIBLE_SHEET_STATE
 		
 				OTHERWISE
 					IF VARTYPE(tcSheetName) != "C"
-						tcSheetName = "Sheet" + TRANSFORM(lnShId) + 1
+						tcSheetName = "Sheet" + TRANSFORM(lnShId + 1)
 					ENDIF
 					IF VARTYPE(tnState) != "N"
 						tnState = VISIBLE_SHEET_STATE
 					ENDIF
 			ENDCASE
 			IF EMPTY(tcSheetName)
-				tcSheetName = "Sheet" + TRANSFORM(lnShId) + 1
+				tcSheetName = "Sheet" + TRANSFORM(lnShId + 1)
 			ENDIF
 			tcSheetName = CHRTRAN(tcSheetName, ":\/?*", "_____")
 			IF LEN(tcSheetName) > LIMITS_MAX_SH_NAME
@@ -805,7 +809,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				tcVPos = FONT_VERTICAL_BASELINE
 			ENDIF
 		*-*	Get the font record id
-			IF SEEK(PADR(tcFName, 100) + STR(tnFSize, 5, 1) + TRANSFORM(tlBold) + TRANSFORM(tlItalic) + PADL(tnFColor, 15) + PADR(tcULine, 16) + ;
+			IF SEEK(BINTOC(tnWB)+PADR(tcFName, 100) + STR(tnFSize, 5, 1) + TRANSFORM(tlBold) + TRANSFORM(tlItalic) + PADL(tnFColor, 15) + PADR(tcULine, 16) + ;
 					TRANSFORM(tlStrikThr) + PADR(tcVPos, 11), "xl_fonts", "cellformat")
 		
 				lnFontId = xl_fonts.id
@@ -1127,7 +1131,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		CATCH TO loException
 			this.ErrorLevelId = 11
 			RAISEEVENT(this, "OnShowErrorMessage", 11, "CreateExcelFile - Failed to create Zip file"+ CR + loException.Message)
-			RETURN
+			RETURN False
 		ENDTRY
 		
 		*-*	Create base zip file
@@ -1187,6 +1191,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				SET STEP ON
 			ENDTRY
 		ENDIF
+		RETURN True
 	ENDPROC
 
 	PROCEDURE CreateFormatStyle		&& Creates a new format style definition
@@ -1372,6 +1377,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		INDEX ON BINTOC(workbook)+BINTOC(id) TAG id FOR !DELETED()
 		INDEX ON BINTOC(workbook)+PADL(id, 10, '0') TAG sortorder FOR !DELETED()
 		INDEX ON BINTOC(workbook)+BINTOC(numFmtId)+BINTOC(fontId)+BINTOC(fillId)+BINTOC(borderId)+BINTOC(indent)+BINTOC(wraptext)+BINTOC(rotation)+ALLTRIM(halign)+ALLTRIM(valign) TAG cellxfs FOR !DELETED()
+		INDEX ON BINTOC(workbook)+BINTOC(fontId)+BINTOC(fillId)+BINTOC(borderId)+BINTOC(indent)+BINTOC(wraptext)+BINTOC(rotation)+ALLTRIM(halign)+ALLTRIM(valign) TAG cellformat FOR !DELETED()
 		
 		CREATE CURSOR xl_fonts (workbook I, id I, fname C(100), fsize N(5,1), fbold L, fitalic L, fcolor I, uline C(16), strkthr L, ;
 							   fvpos C(11), theme I, tint F(20,15), indexed I)
@@ -1452,6 +1458,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		CREATE CURSOR xl_relationships (workbook I, sheet I, relid I, reltype C(20), target C(240))
 		INDEX ON BINTOC(workbook)+BINTOC(relid) TAG relid FOR !DELETED()
 		INDEX ON BINTOC(workbook)+BINTOC(sheet) TAG sheet FOR !DELETED()
+		INDEX ON BINTOC(workbook)+reltype TAG reltype FOR !DELETED()
 		
 		CREATE CURSOR xl_extsheets (workbook I, extid I, relid I, sheetname C(30))
 		INDEX ON BINTOC(workbook)+BINTOC(extid) TAG extid FOR !DELETED()
@@ -2893,6 +2900,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			
 					CASE xl_cells.datatype = DATA_TYPE_INT
 						lxValue = CAST(xl_cells.cellvalue AS I)
+						IF lxValue != VAL(xl_cells.cellvalue)                       && Fix suggestion by Dan Lauer for integer values larger than VFP max
+							lxValue = CAST(xl_cells.cellvalue AS N(20,0))
+						ENDIF
 			
 					CASE xl_cells.datatype = DATA_TYPE_FLOAT
 						lnSize = ATC(".", ALLTRIM(xl_cells.cellvalue))
@@ -3989,6 +3999,59 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN False
 	ENDPROC
 
+	PROCEDURE IsFormatStyleDefined		&& Determines if the format is defined as a style
+		LPARAMETERS tnWB, tcFName, tnFSize, tlBold, tlItalic, tnFColor, tcULine, tlStrikThr, tcVPos
+		DO CASE
+			CASE PCOUNT() < 3
+				RETURN .NULL.
+		
+			CASE PCOUNT() = 3
+				tlBold     = False
+				tlItalic   = False
+				tnFColor   = RGB(0, 0, 0)
+				tcULine    = UNDERLINE_NONE
+				tlStrikThr = False
+				tcVPos     = FONT_VERTICAL_BASELINE
+		
+			CASE PCOUNT() = 4
+				tlItalic   = False
+				tnFColor   = RGB(0, 0, 0)
+				tcULine    = UNDERLINE_NONE
+				tlStrikThr = False
+				tcVPos     = FONT_VERTICAL_BASELINE
+		
+			CASE PCOUNT() = 5
+				tnFColor   = RGB(0, 0, 0)
+				tcULine    = UNDERLINE_NONE
+				tlStrikThr = False
+				tcVPos     = FONT_VERTICAL_BASELINE
+		
+			CASE PCOUNT() = 6
+				tcULine    = UNDERLINE_NONE
+				tlStrikThr = False
+				tcVPos     = FONT_VERTICAL_BASELINE
+		
+			CASE PCOUNT() = 7
+				tlStrikThr = False
+				tcVPos     = FONT_VERTICAL_BASELINE
+		
+			CASE PCOUNT() = 8
+				tcVPos     = FONT_VERTICAL_BASELINE
+		ENDCASE
+		
+		IF SEEK(BINTOC(tnWB)+PADR(tcFName, 100) + STR(tnFSize, 5, 1) + TRANSFORM(tlBold) + TRANSFORM(tlItalic) + PADL(tnFColor, 15) + PADR(tcULine, 16) + ;
+				TRANSFORM(tlStrikThr) + PADR(tcVPos, 11), "xl_fonts", "cellformat")
+		
+			IF SEEK(BINTOC(tnWB)+BINTOC(xl_fonts.id)+BINTOC(0)+BINTOC(0)+BINTOC(0)+BINTOC(0)+BINTOC(0), "xl_cellxfs", "cellformat")
+				RETURN xl_cellxfs.id
+			ELSE
+				RETURN .NULL.
+			ENDIF
+		ELSE
+			RETURN .NULL.
+		ENDIF
+	ENDPROC
+
 	PROTECTED PROCEDURE IsValidBorderStyle		&& Validates the border style value
 		LPARAMETERS tcStyle
 		IF VARTYPE(tcStyle) != 'C' .OR. EMPTY(tcStyle) .OR. !INLIST(tcStyle, BORDER_STYLE_THIN, BORDER_STYLE_HAIR, BORDER_STYLE_DOTTED, BORDER_STYLE_DASHDOTDOT, ;
@@ -4228,22 +4291,20 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					this.DeleteWorkbook(lnWB)
 					RETURN 0
 				ENDIF
-				IF ADIR(laTemp, lcWbXmlPath + "xl\sharedStrings.xml") = 0
-					this.ErrorLevelId = 6
-					RAISEEVENT(this, "OnShowErrorMessage", 6, "Invalid XLSX file - missing sharedStrings.xml")
-					this.DeleteWorkbook(lnWB)
-					RETURN 0
-				ENDIF
 		
 		*-*		Process the workbook
 				RAISEEVENT(this, "OnShowStatusMessage", 1, 1, 6)
 				TRY
-		*-*			Get the shared strings and styles
-					IF !this.ReadSharedStringsXML(lcWbXmlPath, lnWB)
-						this.ErrorLevelId = 7
-						RAISEEVENT(this, "OnShowErrorMessage", 7, "Invalid XLSX file - error during shared string loading")
-						THROW
+		*-*			Get the shared strings if present
+					IF ADIR(laTemp, lcWbXmlPath + "xl\sharedStrings.xml") > 0
+						IF !this.ReadSharedStringsXML(lcWbXmlPath, lnWB)
+							this.ErrorLevelId = 7
+							RAISEEVENT(this, "OnShowErrorMessage", 7, "Invalid XLSX file - error during shared string loading")
+							THROW
+						ENDIF
 					ENDIF
+		
+		*-*			Get the cell formatting styles
 					this.ReadStylesXML(lcWbXmlPath, lnWB)
 		
 		*-*			Get the defined relationship files for this workbook
@@ -4259,13 +4320,13 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 						lcTarget  = this.GetNodeAttributeValue(lcRelation, "Target")
 						lcRelType = this.GetNodeAttributeValue(lcRelation, "Type")
 						lcRelType = SUBSTR(lcRelType, RATC("/", lcRelType)+1)
-					
-						INSERT INTO xl_relationships (workbook, relid, reltype, target) VALUES (lnWB, lnRelId, lcRelType, lcTarget)
-					
-						IF lnRelId > lnLastRelId
-							lnLastRelId = lnRelId
+						IF lcRelType != "theme"
+							INSERT INTO xl_relationships (workbook, relid, reltype, target) VALUES (lnWB, lnRelId, lcRelType, lcTarget)
+						
+							IF lnRelId > lnLastRelId
+								lnLastRelId = lnRelId
+							ENDIF
 						ENDIF
-		
 						lnNode = lnNode + 1
 						lcRelation = this.GetNodeElement(lcRelationships, 'Relationship', lnNode)
 					ENDDO
@@ -4313,8 +4374,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 						lcSheet = this.GetNodeElement(lcSheets, 'sheet', lnNode)
 					ENDDO
 					this.SetLastId(lnWB, lnNode-1, "xl_sheets")
-		
-		SET COVERAGE TO
 		
 		*-*			Get the defined name ranges
 					RAISEEVENT(this, "OnShowStatusMessage", 1, 5)
@@ -4667,7 +4726,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		TRY
 			lcSharedStringFile = ADDBS(tcFilePath) + "xl\sharedStrings.xml"
 			lcStrings = FILETOSTR(lcSharedStringFile)
-		
 			IF this.CodePage = 0
 				lcStrings = STRCONV(lcStrings, 11)
 			ELSE
@@ -4742,7 +4800,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				lnNode = lnNode + 1
 				lcString = this.GetNodeElement(lcStrings, 'si', lnNode)
 			ENDDO
-			this.SetLastId(tnWB, lnNode-1, "xl_strings")
+			this.SetLastId(tnWB, lnNode-2, "xl_strings")    && Decrement by 2 to account for empty string not assigned
 			llSuccess = True
 		
 		CATCH TO loException
@@ -4764,6 +4822,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		*-*	Open the sheet for processing
 		lcSheet = FILETOSTR(tcShFile)
+		IF this.CodePage = 0
+			lcSheet = STRCONV(lcSheet, 11)
+		ELSE
+			lcSheet = STRCONV(lcSheet, 11, this.CodePage, 1)
+		ENDIF
 		
 		*-*	Get the freeze rows/columns settings
 		lcSheetViews = this.GetNodeElement(lcSheet, 'sheetViews', 1, True)
@@ -5040,7 +5103,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LOCAL lcFVPos, lcULine, lnFColor, lnTheme, lnTint, lcColor, lcFills, lcFill, lcPatternFill, lcPatternType, lnFgColor, lnFgIndexed, lcBorder
 		LOCAL lnBgColor, lnBgIndexed, lcBorders, lcBLeft, lcLStyle, lnLColor, lnLTheme, lnLTint, lnLIndex, lcBRight, lcRStyle, lnRColor, lnRTheme
 		LOCAL lnRTint, lnRIndex, lcBTop, lcTStyle, lnTColor, lnTTheme, lnTTint, lnTIndex, lcBBottm, lcBStyle, lnBColor, lnBTheme, lnBTint, lnBIndex
-		LOCAL lnDTint, lnDIndex, lcBDiag, lcDStyle, lnDColor, lnDTheme, lcIndexedColors, lcRgbColor, lcMruColors
+		LOCAL lnDTint, lnDIndex, lcBDiag, lcDStyle, lnDColor, lnDTheme, lcIndexedColors, lcRgbColor, lcMruColors, lnIdCnt
 		
 		RAISEEVENT(this, "OnShowStatusMessage", 1, 2)
 		
@@ -5048,14 +5111,16 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		lcStyleSheet = FILETOSTR(ADDBS(tcFilePath) + "xl\styles.xml")
 		
 		*-*	Retreive the cell format mapping information
+		lnIdCnt   = -1
 		lcCellXfs = this.GetNodeElement(lcStyleSheet, 'cellXfs', 1)
-		lnCnt = CAST(this.GetNodeAttributeValue(lcCellXfs, "count") AS I)
+		lnCnt     = CAST(this.GetNodeAttributeValue(lcCellXfs, "count") AS I)
 		FOR lnNode=1 TO lnCnt
 			lcXf = this.GetNodeElement(lcCellXfs, 'xf', lnNode)
 			IF EMPTY(lcXf)
 				SET STEP ON
 				LOOP
 			ENDIF
+			lnIdCnt    = lnIdCnt + 1
 			lcAlign    = this.GetNodeElement(lcXf, 'alignment', 1)
 			lcHAlign   = this.GetNodeAttributeValue(lcAlign, "horizontal")
 			lcVAlign   = this.GetNodeAttributeValue(lcAlign, "vertical")
@@ -5068,13 +5133,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			lnRotation = CAST(this.GetNodeAttributeValue(lcAlign, "textRotation") AS I)
 		
 			INSERT INTO xl_cellxfs (workbook, id, numFmtId, fontId, fillId, borderId, halign, valign, indent, wraptext, rotation) ;
-				VALUES (tnWB, lnNode-1, lnNumFmtId, lnFontId, lnFillId, lnBorderId, lcHAlign, lcVAlign, lnIndent, lnWrapTx, lnRotation)
+				VALUES (tnWB, lnIdCnt, lnNumFmtId, lnFontId, lnFillId, lnBorderId, lcHAlign, lcVAlign, lnIndent, lnWrapTx, lnRotation)
 		ENDFOR
-		this.SetLastId(tnWB, lnNode-1, "xl_cellxfs")
+		this.SetLastId(tnWB, lnIdCnt, "xl_cellxfs")
 		
 		*-*	Retreive the number format information
+		lnIdCnt   = -1
 		lcNumFmts = this.GetNodeElement(lcStyleSheet, 'numFmts', 1)
-		lnCnt = CAST(this.GetNodeAttributeValue(lcNumFmts, "count") AS I)
+		lnCnt     = CAST(this.GetNodeAttributeValue(lcNumFmts, "count") AS I)
 		FOR lnNode=1 TO lnCnt
 			lcNumFmt = this.GetNodeElement(lcNumFmts, 'numFmt', lnNode)
 			IF EMPTY(lcNumFmt)
@@ -5089,14 +5155,16 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDFOR
 		
 		*-*	Retreive the font informaton
+		lnIdCnt = -1
 		lcFonts = this.GetNodeElement(lcStyleSheet, 'fonts', 1)
-		lnCnt = CAST(this.GetNodeAttributeValue(lcFonts, "count") AS I)
+		lnCnt   = CAST(this.GetNodeAttributeValue(lcFonts, "count") AS I)
 		FOR lnNode=1 TO lnCnt
 			lcFont = this.GetNodeElement(lcFonts, 'font', lnNode)
 			IF EMPTY(lcFont)
 				SET STEP ON
 				LOOP
 			ENDIF
+			lnIdCnt   = lnIdCnt + 1
 			lnFSize   = CAST(this.GetNodeAttributeValue(this.GetNodeElement(lcFont, 'sz', 1), "val") AS I)
 			lnFSize   = IIF(lnFSize>0, lnFSize, 10)
 			lcFName   = this.GetNodeAttributeValue(this.GetNodeElement(lcFont, 'name', 1), "val")
@@ -5119,19 +5187,21 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			lnIndexed = CAST(this.GetNodeAttributeValue(lcColor, "indexed") AS I)
 		
 			INSERT INTO xl_fonts (workbook, id, fname, fsize, fcolor, fbold, fitalic, uline, strkthr, fvpos, theme, tint, indexed) ;
-				VALUES (tnWB, lnNode-1, lcFName, lnFSize, lnFColor, llFBold, llFItalic, lcULine, llStrkthr, lcFVPos, lnTheme, lnTint, lnIndexed)
+				VALUES (tnWB, lnIdCnt, lcFName, lnFSize, lnFColor, llFBold, llFItalic, lcULine, llStrkthr, lcFVPos, lnTheme, lnTint, lnIndexed)
 		ENDFOR
-		this.SetLastId(tnWB, lnNode-1, "xl_fonts")
+		this.SetLastId(tnWB, lnIdCnt, "xl_fonts")
 		
 		*-*	Retreive the cell fill information
+		lnIdCnt = -1
 		lcFills = this.GetNodeElement(lcStyleSheet, 'fills', 1)
-		lnCnt = CAST(this.GetNodeAttributeValue(lcFills, "count") AS I)
+		lnCnt   = CAST(this.GetNodeAttributeValue(lcFills, "count") AS I)
 		FOR lnNode=1 TO lnCnt
 			lcFill = this.GetNodeElement(lcFills, 'fill', lnNode)
 			IF EMPTY(lcFill)
 				SET STEP ON
 				LOOP
 			ENDIF
+			lnIdCnt       = lnIdCnt + 1
 			lcPatternFill = this.GetNodeElement(lcFill, 'patternFill', 1)
 			lcPatternType = this.GetNodeAttributeValue(lcPatternFill, "patternType")
 			lcPatternType = IIF(EMPTY(lcPatternType), "none", lcPatternType)
@@ -5154,19 +5224,21 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				lnBgIndexed = CAST(this.GetNodeAttributeValue(lcColor, "indexed") AS I)
 			ENDIF
 			INSERT INTO xl_fills (workbook, id, patttype, theme, tint, fgcolor, bgcolor, fgindexed, bgindexed) ;
-				VALUES (tnWB, lnNode-1, lcPatternType, lnTheme, lnTint, lnFgColor, lnBgColor, lnFgIndexed, lnBgIndexed)
+				VALUES (tnWB, lnIdCnt, lcPatternType, lnTheme, lnTint, lnFgColor, lnBgColor, lnFgIndexed, lnBgIndexed)
 		ENDFOR
-		this.SetLastId(tnWB, lnNode-1, "xl_fills")
+		this.SetLastId(tnWB, lnIdCnt, "xl_fills")
 		
 		*-*	Retreive the cell border information
+		lnIdCnt   = -1
 		lcBorders = this.GetNodeElement(lcStyleSheet, 'borders', 1)
-		lnCnt = CAST(this.GetNodeAttributeValue(lcBorders, "count") AS I)
+		lnCnt     = CAST(this.GetNodeAttributeValue(lcBorders, "count") AS I)
 		FOR lnNode=1 TO lnCnt
 			lcBorder = this.GetNodeElement(lcBorders, 'border', lnNode)
 			IF EMPTY(lcBorder)
 				SET STEP ON
 				LOOP
 			ENDIF
+			lnIdCnt  = lnIdCnt + 1
 			lcBLeft  = this.GetNodeElement(lcBorder, 'left', 1)
 			lcLStyle = this.GetNodeAttributeValue(lcBLeft, "style")
 			lcColor  = this.GetNodeElement(lcBLeft, 'color', 1)
@@ -5246,10 +5318,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 			INSERT INTO xl_borders (workbook, id, lstyle, lcolor, ltheme, ltint, lindexed, rstyle, rcolor, rtheme, rtint, rindexed, tstyle, tcolor, ttheme, ttint, tindexed, ;
 								    bstyle, bcolor, btheme, btint, bindexed, dstyle, dcolor, dtheme, dtint, dindexed, diagdn, diagup) ;
-				VALUES (tnWB, lnNode-1, lcLStyle, lnLColor, lnLTheme, lnLTint, lnLIndex, lcRStyle, lnRColor, lnRTheme, lnRTint, lnRIndex, lcTStyle, lnTColor, lnTTheme, ;
+				VALUES (tnWB, lnIdCnt, lcLStyle, lnLColor, lnLTheme, lnLTint, lnLIndex, lcRStyle, lnRColor, lnRTheme, lnRTint, lnRIndex, lcTStyle, lnTColor, lnTTheme, ;
 						lnTTint, lnTIndex, lcBStyle, lnBColor, lnBTheme, lnBTint, lnBIndex, lcDStyle, lnDColor, lnDTheme, lnDTint, lnDIndex, lnDiagDn, lnDiagUp)
 		ENDFOR
-		this.SetLastId(tnWB, lnNode-1, "xl_borders")
+		this.SetLastId(tnWB, lnIdCnt, "xl_borders")
 		
 		*-*	Retreive the indexed color information
 		lcColors = this.GetNodeElement(lcStyleSheet, 'colors', 1)
@@ -5333,7 +5405,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROCEDURE SaveGridToWorkbook		&& Saves the selected grid to a workbook
 		LPARAMETERS toGrid, txWB, tlFreeze, tlSaveWB, tcSheetName, tlInclHiddenCols
-		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, loColumn, lnStyle, lnColCount
+		LOCAL lcAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, loColumn, lnStyle, lnColCount, lnDefStyle
 		LOCAL ARRAY laRowCount[1], laColOrder[1]
 		loReturn = CREATEOBJECT("Empty")
 		ADDPROPERTY(loReturn, "Workbook",  0)
@@ -5457,15 +5529,27 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				ENDSCAN
 		
 		*-*		Set the cell style formatting
+				lnDefStyle = this.IsFormatStyleDefined(lnWB, this.DefaultFont, this.DefaultFontSize)
+				IF ISNULL(lnDefStyle)
+					lnDefStyle = this.CreateFormatStyle(lnWB)
+					this.AddStyleFont(lnWB, lnDefStyle, this.DefaultFont, this.DefaultFontSize)
+				ENDIF
+		
 				FOR lnCol=1 TO lnColCount
 					loColumn = toGrid.Columns(laColOrder[lnCol, 2])
-					lnStyle  = this.CreateFormatStyle(lnWB)
-					IF this.DefaultFont != loColumn.FontName .OR. this.DefaultFontSize != loColumn.FontSize   && Change recommended by Doug Hennig; 2017-06-12
-						this.AddStyleFont(lnWB, lnStyle, loColumn.FontName, loColumn.FontSize)
-					ELSE
-						this.AddStyleFont(lnWB, lnStyle, this.DefaultFont, this.DefaultFontSize)
+					lcField  = loColumn.ControlSource
+					IF VARTYPE(&lcField) != DATA_TYPE_DATE
+						IF this.DefaultFont != loColumn.FontName .OR. this.DefaultFontSize != loColumn.FontSize   && Change recommended by Doug Hennig; 2017-06-12
+							lnStyle = this.IsFormatStyleDefined(lnWB, loColumn.FontName, loColumn.FontSize)
+							IF ISNULL(lnStyle)
+								lnStyle = this.CreateFormatStyle(lnWB)
+								this.AddStyleFont(lnWB, lnStyle, loColumn.FontName, loColumn.FontSize)
+							ENDIF
+						ELSE
+							lnStyle = lnDefStyle
+						ENDIF
+						this.SetCellStyleRange(lnWB, lnSh, 1, lnCol, laRowCount[1]+1, lnCol, lnStyle)
 					ENDIF
-					this.SetCellStyleRange(lnWB, lnSh, 1, lnCol, laRowCount[1]+1, lnCol, lnStyle)
 				ENDFOR
 		
 		*-*		Freeze the first row if specified
@@ -5487,9 +5571,12 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LPARAMETERS toGrid, tcFileName, tlFreeze, tcSheetName, tlInclHiddenCols
 		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentury, lxCellValue
 		LOCAL lnColCount, lnColWidth, lcCurAlias
-		LOCAL ARRAY laColOrder[1]
+		LOCAL ARRAY laColOrder[1], laSheetNames[1]
 		llError    = False
 		lcCurAlias = ALIAS()
+		IF VARTYPE(toGrid) != "O" .AND. PEMSTATUS(toGrid, "BaseClass", 5) .AND. LOWER(toGrid.BaseClass) != "grid"
+			RETURN False
+		ENDIF
 		DO CASE
 			CASE PCOUNT() < 2
 				RETURN False
@@ -5560,7 +5647,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ENDIF
 		ASORT(laColOrder)
 		
-		IF this.WriteDirectXMLs(lcTempPath, tcSheetName)
+		DIMENSION laSheetNames[1]
+		laSheetNames[1] = tcSheetName
+		IF this.WriteDirectXMLs(lcTempPath, @laSheetNames)
 		*-*	Write the sheet XML
 			TRY
 				lcFileName = lcTempPath + "xl\worksheets\sheet1.xml"
@@ -5661,15 +5750,247 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			IF llError
 				llSuccess = False
 			ELSE
-		*-*		Create the XLSX file
-				this.CreateExcelFile(lcTempPath, JUSTPATH(tcFileName), JUSTSTEM(tcFileName))    && Change recommendation by Doug Hennig [placement of code after ELSE]
-				llSuccess = True
+				llSuccess = this.CreateExcelFile(lcTempPath, JUSTPATH(tcFileName), JUSTSTEM(tcFileName))    && Change recommendation by Doug Hennig [placement of code after ELSE]
 			ENDIF
 			this.RemoveWorkingDirectories(lcTempPath)
 		
 		ELSE
 			llSuccess = False
 		ENDIF
+		IF !EMPTY(lcCurAlias)
+			SELECT (lcCurAlias)
+		ENDIF
+		
+		*-*	Restore default settings
+		IF lcSetPoint != "."
+			SET POINT TO (lcSetPoint)
+			SET SEPARATOR TO (lcSeparator)
+		ENDIF
+		RETURN llSuccess
+	ENDPROC
+
+	PROCEDURE SaveMultiGridToWorkbookEx		&& Same as SaveGridToWorkbookEx() method but handles multiple grids being passed
+		LPARAMETERS toGrids, tcFileName
+		LOCAL llError, lcTempPath, lcAlias, lcFileName, lhFile, lcRowDefHt, lnCol, lnRow, lcSETCentury, lxCellValue
+		LOCAL lnColCount, lnColWidth, lcCurAlias, lnGrid, loGrid, loException, lcSheetName
+		LOCAL ARRAY laColOrder[1], laSheetNames[1]
+		llError    = False
+		lcCurAlias = ALIAS()
+		IF PCOUNT() < 2
+			RETURN False
+		ENDIF
+		IF VARTYPE(toGrids) = "O"
+			IF PEMSTATUS(toGrids, "Count", 5) .AND. VARTYPE(toGrids.Count) != "N"
+				RETURN False
+			ELSE
+				IF toGrids.Count < 1
+					RETURN False
+				ENDIF
+			ENDIF
+		
+			IF PEMSTATUS(toGrids, "List", 5)
+				llError = False
+				TRY
+					IF ALEN(toGrids.List, 2) != 4   && Column 1 Grid; Column 2  SheetName; Column 3 Freeze indicator, Column 4 HiddenCols indicator
+						THROW
+					ENDIF
+				CATCH TO loException
+					llError = True
+				ENDTRY
+				IF llError
+					RETURN False
+				ENDIF
+				FOR lnGrid=1 TO toGrids.Count
+		*-*			Validate grid object
+					loGrid = toGrids.List[lnGrid, 1]
+					IF VARTYPE(loGrid) != "O" .AND. PEMSTATUS(loGrid, "BaseClass", 5) .AND. LOWER(loGrid.BaseClass) != "grid"
+						RETURN False
+					ENDIF
+		*-*			Validate sheet name
+					lcSheetName = toGrids.List[lnGrid, 2]
+					IF VARTYPE(lcSheetName) != 'C' .OR. EMPTY(lcSheetName)
+						lcSheetName = loGrid.Name
+					ENDIF
+					lcSheetName = CHRTRAN(lcSheetName, ":\/?*", "_____")
+					IF LEN(lcSheetName) > LIMITS_MAX_SH_NAME
+						IF this.AutoTrimSheetName
+							lcSheetName = LEFT(ALLTRIM(lcSheetName), LIMITS_MAX_SH_NAME)
+						ELSE
+							RETURN False
+						ENDIF
+					ENDIF
+					toGrids.List[lnGrid, 2] = lcSheetName
+		*-*			Validate freeze indicator
+					IF VARTYPE(toGrids.List[lnGrid, 3]) != 'L'
+					 	toGrids.List[lnGrid, 3] = False
+					ENDIF
+		*-*			Validate hidden column indicator
+					IF VARTYPE(toGrids.List[lnGrid, 4]) != 'L'
+						toGrids.List[lnGrid, 4] = False
+					ENDIF
+				ENDFOR
+			ENDIF
+		ELSE
+			RETURN False
+		ENDIF
+		
+		*-* Set temporary output path
+		lcTempPath = this.CreateWorkingDirectories()
+		IF ISNULL(lcTempPath)
+			RETURN False
+		ENDIF
+		
+		*-*	Save current settings and then set to US formats
+		lcSetPoint  = SET("POINT")
+		lcSeparator = SET("SEPARATOR")
+		IF lcSetPoint != "."
+			SET POINT TO "."
+			SET SEPARATOR TO ","
+		ENDIF
+		
+		*-*	Output the workbook
+		DIMENSION laSheetNames[toGrids.Count]
+		FOR lnGrid=1 TO toGrids.Count
+			laSheetNames[lnGrid] = toGrids.List[lnGrid, 2]
+		ENDFOR
+		IF !this.WriteDirectXMLs(lcTempPath, @laSheetNames)
+			RETURN False
+		ENDIF
+		
+		*-*	Write the sheet xml for each grid
+		FOR lnGrid=1 TO toGrids.Count
+			loGrid  = toGrids.List[lnGrid, 1]
+			lcAlias = JUSTSTEM(loGrid.RecordSource)
+			
+			*-*	Get the number of columns to process
+			*-*	Get the column output order based on grid display order       && Change requested by Matt Slay to output by grid display order and visible setting
+			IF toGrids.List[lnGrid, 4]
+				lnColCount = loGrid.ColumnCount
+				DIMENSION laColOrder[lnColCount, 2]
+				FOR lnCol=1 TO loGrid.ColumnCount
+					laColOrder[lnCol, 1] = loGrid.Columns(lnCol).ColumnOrder     && Grid display order
+					laColOrder[lnCol, 2] = lnCol                                 && Column property order
+				ENDFOR
+			ELSE
+				lnColCount = 0
+				FOR lnCol=1 TO loGrid.ColumnCount
+					IF loGrid.Columns(lnCol).Visible
+						lnColCount = lnColCount + 1
+						DIMENSION laColOrder[lnColCount, 2]
+						laColOrder[lnColCount, 1] = loGrid.Columns(lnCol).ColumnOrder   && Grid display order
+						laColOrder[lnColCount, 2] = lnCol                        && Column property order
+					ENDIF
+				ENDFOR
+			ENDIF
+			IF lnColCount = 0
+				RETURN False
+			ENDIF
+			ASORT(laColOrder)
+			
+			TRY
+				lcFileName = lcTempPath + "xl\worksheets\sheet" + TRANSFORM(lnGrid) + ".xml"
+				lhFile = FCREATE(lcFileName)
+				IF lhFile < 0
+					THROW
+				ENDIF
+		
+		*-*		Write sheet XML header information
+				FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
+				FWRITE(lhFile, '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"')
+				FWRITE(lhFile, ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"')
+				FWRITE(lhFile, ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac"')
+				FWRITE(lhFile, ' xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">')
+		
+		*-*		Write the sheet view information which includes the freeze pane information
+				FWRITE(lhFile, '<dimension ref="A1:' + this.ColumnIndexToAscii(lnColCount) + TRANSFORM(RECCOUNT(lcAlias)+1) + '"/>')
+				IF toGrids.List[lnGrid, 3]
+					FWRITE(lhFile, '<sheetViews><sheetView workbookViewId="0">')
+					FWRITE(lhFile, '<pane state="frozenSplit" activePane="bottomLeft" topLeftCell="A2" ySplit="1"/>')
+					FWRITE(lhFile, '<selection activeCell="A2" sqref="A2" pane="bottomLeft"/>')
+					FWRITE(lhFile, '</sheetView></sheetViews>')
+				ENDIF
+				FWRITE(lhFile, '<sheetFormatPr defaultRowHeight="15"/>')
+		
+		*-*		Write sheet Column widths
+				FWRITE(lhFile, '<cols>')
+				FOR lnCol=1 TO lnColCount
+					lnColWidth = this.ConvertPixelsToExcelUnits(loGrid.Columns(laColOrder[lnCol, 2]).Width)
+					FWRITE(lhFile, '<col min="' + TRANSFORM(lnCol) + '" max="' + TRANSFORM(lnCol) + '" width="' + TRANSFORM(lnColWidth+0.7109375) + '" customWidth="1"/>')
+				ENDFOR
+				FWRITE(lhFile, '</cols>')
+		
+		*-*		Write sheet cell data values
+				lcRowDefHt = ' ht="30"'
+				FWRITE(lhFile, '<sheetData>')
+		
+		*-*		Place field names in the first row
+				IF loGrid.HeaderHeight > 0                                   && Change recommendation by Doug Hennig (if no headers, then no output)
+					FWRITE(lhFile, '<row r="1" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
+					IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
+						FOR lnCol=1 TO lnColCount
+							this.WriteAsInLineString(lhFile, 1, lnCol, loGrid.Columns(laColOrder[lnCol, 2]).Header1.Caption)
+						ENDFOR
+					ELSE
+						FOR lnCol=1 TO lnColCount
+							this.WriteAsInLineFormattedString(lhFile, 1, lnCol, loGrid.Columns(laColOrder[lnCol, 2]).Header1.Caption)
+						ENDFOR
+					ENDIF
+					FWRITE(lhFile, '</row>')
+					lnRow = 1
+				ELSE
+					lnRow = 0
+				ENDIF
+		
+		*-*		Write the grid field values to cells
+				lcSETCentury = SET("CENTURY")
+				SET CENTURY ON
+				SELECT &lcAlias
+				IF this.DefaultFont = "Calibri" .AND. this.DefaultFontSize = 11
+					SCAN
+						lnRow = lnRow + 1
+						FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
+						FOR lnCol=1 TO lnColCount
+							lxCellValue = EVALUATE(loGrid.Columns(laColOrder[lnCol, 2]).ControlSource)
+							this.WriteDirectCellValue(lhFile, lnRow, lnCol, lxCellValue)
+						ENDFOR
+						FWRITE(lhFile, '</row>')
+					ENDSCAN
+				ELSE
+					SCAN
+						lnRow = lnRow + 1
+						FWRITE(lhFile, '<row r="' + TRANSFORM(lnRow) + '" spans="1:' + TRANSFORM(lnColCount) + '"' + lcRowDefHt + '>')
+						FOR lnCol=1 TO lnColCount
+							lxCellValue = EVALUATE(loGrid.Columns(laColOrder[lnCol, 2]).ControlSource)
+							this.WriteDirectCellFormattedValue(lhFile, lnRow, lnCol, lxCellValue)
+						ENDFOR
+						FWRITE(lhFile, '</row>')
+					ENDSCAN
+				ENDIF
+				SET CENTURY &lcSETCentury
+		
+		*-*		End the sheet cell data values and worksheet
+				FWRITE(lhFile, '</sheetData>')
+				FWRITE(lhFile, '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>')
+				FWRITE(lhFile, '</worksheet>')
+		
+			CATCH TO loException
+				SET STEP ON
+				llError = True
+				this.ErrorLevelId = 14
+				RAISEEVENT(this, "OnShowErrorMessage", 14, loException.message)
+		
+			FINALLY
+				FCLOSE(lhFile)
+				this.SaveAsUTF8(lcFileName)
+			ENDTRY
+		ENDFOR
+		IF llError
+			llSuccess = False
+		ELSE
+			llSuccess = this.CreateExcelFile(lcTempPath, JUSTPATH(tcFileName), JUSTSTEM(tcFileName))   && Change recommendation by Doug Hennig [placement of code after ELSE]
+		ENDIF
+		*-*	Cleanup
+		this.RemoveWorkingDirectories(lcTempPath)
 		IF !EMPTY(lcCurAlias)
 			SELECT (lcCurAlias)
 		ENDIF
@@ -5792,6 +6113,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 						ENDIF
 					ENDFOR
 				ENDSCAN
+		
 				IF tlFreeze
 					this.FreezePanes(lnWB, lnSh, 1, 0)
 				ENDIF
@@ -5826,6 +6148,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LOCAL lcCurAlias, llOpenedTbl, lcAlias, llError, loException, lhFile, lnCol, lcRowDefHt
 		LOCAL lnFldCnt, lnRow, lxCellValue, lcTempPath, lcFileName, lcSETCentry, lcCaption, llSuccess, lcSetPoint
 		LOCAL lcSeparator
+		LOCAL ARRAY laSheetNames[1]
 		EXTERNAL ARRAY taFields
 		llError = False
 		DO CASE
@@ -5857,14 +6180,13 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDIF
 		ENDIF
 		lcCurAlias = ALIAS()
+		lcAlias    = JUSTSTEM(tcAlias)
 		DO CASE
-			CASE USED(tcAlias)
+			CASE USED(lcAlias)
 				llOpenedTbl = False
-				lcAlias = tcAlias
 		
 			CASE OCCURS("\", tcAlias) > 0
 				TRY
-					lcAlias = JUSTSTEM(tcAlias)
 					USE (tcAlias) IN 0 ALIAS (lcAlias) SHARED
 					llOpenedTbl = True
 		
@@ -5913,7 +6235,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			SET POINT TO "."
 			SET SEPARATOR TO ","
 		ENDIF
-		IF this.WriteDirectXMLs(lcTempPath, tcSheetName)
+		
+		DIMENSION laSheetNames[1]
+		laSheetNames[1] = tcSheetName
+		IF this.WriteDirectXMLs(lcTempPath, @laSheetNames)
 		*-*	Write the sheet XML
 			TRY
 				lcFileName = lcTempPath + "xl\worksheets\sheet1.xml"
@@ -6002,8 +6327,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				llSuccess = False
 			ELSE
 		*-*		Create the XLSX file
-				this.CreateExcelFile(lcTempPath, JUSTPATH(tcXlsxName), JUSTSTEM(tcXlsxName))    && Change recommendation by Doug Hennig [placement of code after ELSE]
-				llSuccess = True
+				llSuccess = this.CreateExcelFile(lcTempPath, JUSTPATH(tcXlsxName), JUSTSTEM(tcXlsxName))    && Change recommendation by Doug Hennig [placement of code after ELSE]
 			ENDIF
 			this.RemoveWorkingDirectories(lcTempPath)
 		ELSE
@@ -6047,8 +6371,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				lnTotStages = lnTotStages + 5
 				RAISEEVENT(this, "OnShowStatusMessage", 2, 0, lnTotStages)
 		
-				IF this.WriteSupportXMLs(tnWB, lcTempPath) ;
-				.AND. this.WriteStringsXML(tnWB, lcTempPath) ;
+				IF this.WriteStringsXML(tnWB, lcTempPath) ;
+				.AND. this.WriteSupportXMLs(tnWB, lcTempPath) ;
 				.AND. this.WriteStylesXML(tnWB, lcTempPath) ;
 				.AND. this.WriteWorkbookXML(tnWB, lcTempPath) ;
 				.AND. this.WriteRelationshipsXML(tnWB, lcTempPath)
@@ -6068,7 +6392,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					SET ORDER TO
 		
 					IF llReturn .AND. SEEK(BINTOC(tnWB), "xl_workbooks", "workbook")
-						this.CreateExcelFile(lcTempPath, xl_workbooks.filepath, xl_workbooks.wbname)
+						llReturn = this.CreateExcelFile(lcTempPath, xl_workbooks.filepath, xl_workbooks.wbname)
 					ENDIF
 				ELSE
 					llReturn = False
@@ -6554,7 +6878,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				tcVPos = FONT_VERTICAL_BASELINE
 			ENDIF
 		*-*	Get the font record id
-			IF SEEK(PADR(tcFName, 100) + STR(tnFSize, 5, 1) + TRANSFORM(tlBold) + TRANSFORM(tlItalic) + PADL(tnFColor, 15) + PADR(tcULine, 16) + ;
+			IF SEEK(BINTOC(tnWB)+PADR(tcFName, 100) + STR(tnFSize, 5, 1) + TRANSFORM(tlBold) + TRANSFORM(tlItalic) + PADL(tnFColor, 15) + PADR(tcULine, 16) + ;
 					TRANSFORM(tlStrikThr) + PADR(tcVPos, 11), "xl_fonts", "cellformat")
 		
 				lnFontId = xl_fonts.id
@@ -8262,10 +8586,18 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROTECTED PROCEDURE WriteDirectXMLs		&& Writes the workbook XMLs for direct table/grid to workbook output
-		LPARAMETERS tcPath, tcSheetName
+		LPARAMETERS tcPath, taSheetNames
+		LOCAL lhFile, lcFileName, loException, lcSheetName, lnSheet, lnNumSheets
+		EXTERNAL ARRAY taSheetNames
 		*-*	Create the supporting XML files
-		LOCAL lhFile, lcFileName, loException
 		loException = .NULL.
+		TRY
+			lnNumSheets = ALEN(taSheetNames, 1)
+		CATCH TO loException
+		ENDTRY
+		IF !ISNULL(loException)
+			RETURN False
+		ENDIF
 		TRY
 			lhFile = FCREATE(tcPath + "[Content_Types].xml")
 			IF lhFile < 0
@@ -8276,9 +8608,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			FWRITE(lhFile, '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>')
 			FWRITE(lhFile, '<Default Extension="xml" ContentType="application/xml"/>')
 			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" PartName="/xl/workbook.xml"/>')
-		
 			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml" PartName="/xl/styles.xml"/>')
-			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet1.xml"/>')
+			FOR lnSheet=1 TO lnNumSheets
+				FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet' + TRANSFORM(lnSheet) + '.xml"/>')
+			ENDFOR
 			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-package.core-properties+xml" PartName="/docProps/core.xml"/>')
 			FWRITE(lhFile, '<Override ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml" PartName="/docProps/app.xml"/>')
 			FWRITE(lhFile, '</Types>')
@@ -8304,8 +8637,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDIF
 			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
 			FWRITE(lhFile, '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">')
-			FWRITE(lhFile, '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>')
-			FWRITE(lhFile, '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>')
+			FWRITE(lhFile, '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>')
+			FOR lnSheet=1 TO lnNumSheets
+				FWRITE(lhFile, '<Relationship Id="rId' + TRANSFORM(lnSheet+1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + TRANSFORM(lnSheet) + '.xml"/>')
+			ENDFOR
 			FWRITE(lhFile, '</Relationships>')
 			FCLOSE(lhFile)
 		
@@ -8389,11 +8724,16 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ENDIF
 			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+ LF)
 			FWRITE(lhFile, '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">')
-			IF EMPTY(tcSheetName)
-				FWRITE(lhFile, '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets>')
-			ELSE
-				FWRITE(lhFile, '<sheets><sheet name="' + tcSheetName + '" sheetId="1" r:id="rId1"/></sheets>')
-			ENDIF
+			FWRITE(lhFile, '<sheets>')
+			FOR lnSheet=1 TO lnNumSheets
+				IF EMPTY(taSheetNames[lnSheet])
+					lcSheetName = "Sheet" + TRANSFORM(lnSheet)
+				ELSE
+					lcSheetName = taSheetNames[lnSheet]
+				ENDIF
+				FWRITE(lhFile, '<sheet name="' + lcSheetName + '" sheetId="' + TRANSFORM(lnSheet) + '" r:id="rId' + TRANSFORM(lnSheet+1) + '"/>')
+			ENDFOR
+			FWRITE(lhFile, '</sheets>')
 			FWRITE(lhFile, '<calcPr calcId="0"/>')
 			FWRITE(lhFile, '</workbook>')
 			FCLOSE(lhFile)
@@ -8975,15 +9315,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROTECTED PROCEDURE WriteStringsXML		&& Writes the sharedStrings XML
 		LPARAMETERS tnWB, tcPath
-		LOCAL lcFileName, lhFile, lnTotCount, lnUniqueCnt, loException, llSuccess
+		LOCAL lcFileName, lhFile, lnTotCount, lnUniqueCnt, loException, llSuccess, lnRelId
 		RAISEEVENT(this, "OnShowStatusMessage", 2, 2)
 		TRY
-			lcFileName = tcPath + "xl\sharedStrings.xml"
-			lhFile = FCREATE(lcFileName)
-			IF lhFile < 0
-				THROW
-			ENDIF
-		
 			SELECT xl_strformat
 			SET ORDER TO TAG sortorder
 			COUNT FOR workbook = tnWB .AND. !DELETED() TO lnTotCount
@@ -8993,72 +9327,92 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			COUNT FOR workbook = tnWB .AND. !DELETED() TO lnUniqueCnt
 			lnTotCount = lnTotCount + lnUniqueCnt
 		
-			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + LF)
-			FWRITE(lhFile, '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + '" count="' + TRANSFORM(lnTotCount) + ' uniqueCount="' + TRANSFORM(lnUniqueCnt) + '"')
-			SCAN FOR workbook = tnWB .AND. !DELETED()
-				IF xl_strings.formatted
-					FWRITE(lhFile, '<si>')
-					SELECT xl_strformat
-					SCAN FOR workbook = tnWB .AND. id = xl_strings.id .AND. !DELETED()
-						FWRITE(lhFile, '<r>')
-						IF xl_strformat.fbold .OR. xl_strformat.fitalic .OR. xl_strformat.fcolor>0 .OR. !EMPTY(xl_strformat.fname) .OR. xl_strformat.fsize>0 ;
-						.OR. xl_strformat.strkthr .OR. !EMPTY(xl_strformat.fvpos) .OR. xl_strformat.theme>0 .OR. xl_strformat.indexed>0 .OR. xl_strformat.uline != UNDERLINE_NONE
-		
-							FWRITE(lhFile, '<rPr>')
-							IF xl_strformat.fbold
-								FWRITE(lhFile, '<b/>')
-							ENDIF
-							IF xl_strformat.fitalic
-								FWRITE(lhFile, '<i/>')
-							ENDIF
-							IF xl_strformat.uline != UNDERLINE_NONE
-								FWRITE(lhFile, '<u/>')
-							ENDIF
-							IF xl_strformat.strkthr
-								FWRITE(lhFile, '<strike/>')
-							ENDIF
-							IF xl_strformat.fsize > 0
-								FWRITE(lhFile, '<sz val="' + TRANSFORM(xl_strformat.fsize) + '"/>')
-							ENDIF
-							DO CASE
-								CASE xl_strformat.fcolor > 0
-									FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_strformat.fcolor) +'"/>')
-								
-								CASE xl_strformat.indexed > 0
-									FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_strformat.indexed) + '"/>')
-		
-								CASE xl_strformat.theme > 0
-									FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_strformat.theme) +'" tint="' + TRANSFORM(xl_strformat.tint, "99.999999999999999") + '"/>')
-							ENDCASE
-							IF !EMPTY(xl_strformat.fvpos)
-								FWRITE(lhFile, '<vertAlign val="' + ALLTRIM(xl_strformat.fvpos) + '"/>')
-							ENDIF
-							IF !EMPTY(xl_strformat.fname)
-								FWRITE(lhFile, '<rFont val="' + ALLTRIM(xl_strformat.fname) + '"/>')
-							ENDIF
-							FWRITE(lhFile, '</rPr>')
-						ENDIF
-		*				IF xl_strformat.presvspace
-							FWRITE(lhFile, '<t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t>')
-		*				ELSE
-		*					FWRITE(lhFile, '<t>' + xl_strformat.stringxml + '</t>')
-		*				ENDIF
-						FWRITE(lhFile, '</r>')
-					ENDSCAN
-					FWRITE(lhFile, '</si>')
-					SELECT xl_strings
-				ELSE
-					IF xl_strings.presvspace
-						FWRITE(lhFile, '<si><t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t></si>')
-					ELSE
-						FWRITE(lhFile, '<si><t>' + xl_strings.stringxml + '</t></si>')
-					ENDIF
+			IF lnUniqueCnt > 0
+		*-*		If the shared strings xml has not been defined in the relationships, add it
+				IF !SEEK(BINTOC(tnWB)+"sharedStrings", "xl_relationships", "reltype")
+					lnRelId = this.GetNextId(tnWB, "xl_relationships")
+					INSERT INTO xl_relationships (workbook, relid, reltype, target) VALUES (tnWB, lnRelId, "sharedStrings", "sharedStrings.xml")
 				ENDIF
-			ENDSCAN
-			SET ORDER TO
-			FWRITE(lhFile, '</sst>')
-			FCLOSE(lhFile)
-			STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
+		
+		*-*		Output the file		
+				lcFileName = tcPath + "xl\sharedStrings.xml"
+				lhFile = FCREATE(lcFileName)
+				IF lhFile < 0
+					THROW
+				ENDIF
+			
+				FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + LF)
+				FWRITE(lhFile, '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + TRANSFORM(lnTotCount) + '" uniqueCount="' + TRANSFORM(lnUniqueCnt) + '">')   && Change 19Jun2018: missplaced >
+		
+				SELECT xl_strings
+				SCAN FOR workbook = tnWB .AND. !DELETED()
+					IF xl_strings.formatted
+						FWRITE(lhFile, '<si>')
+						SELECT xl_strformat
+						SCAN FOR workbook = tnWB .AND. id = xl_strings.id .AND. !DELETED()
+							FWRITE(lhFile, '<r>')
+							IF xl_strformat.fbold .OR. xl_strformat.fitalic .OR. xl_strformat.fcolor>0 .OR. !EMPTY(xl_strformat.fname) .OR. xl_strformat.fsize>0 ;
+									.OR. xl_strformat.strkthr .OR. !EMPTY(xl_strformat.fvpos) .OR. xl_strformat.theme>0 .OR. xl_strformat.indexed>0 .OR. xl_strformat.uline != UNDERLINE_NONE
+			
+								FWRITE(lhFile, '<rPr>')
+								IF xl_strformat.fbold
+									FWRITE(lhFile, '<b/>')
+								ENDIF
+								IF xl_strformat.fitalic
+									FWRITE(lhFile, '<i/>')
+								ENDIF
+								IF xl_strformat.uline != UNDERLINE_NONE
+									FWRITE(lhFile, '<u/>')
+								ENDIF
+								IF xl_strformat.strkthr
+									FWRITE(lhFile, '<strike/>')
+								ENDIF
+								IF xl_strformat.fsize > 0
+									FWRITE(lhFile, '<sz val="' + TRANSFORM(xl_strformat.fsize) + '"/>')
+								ENDIF
+								DO CASE
+									CASE xl_strformat.fcolor > 0
+										FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_strformat.fcolor) +'"/>')
+			
+									CASE xl_strformat.indexed > 0
+										FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_strformat.indexed) + '"/>')
+			
+									CASE xl_strformat.theme > 0
+										FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_strformat.theme) +'" tint="' + TRANSFORM(xl_strformat.tint, "99.999999999999999") + '"/>')
+								ENDCASE
+								IF !EMPTY(xl_strformat.fvpos)
+									FWRITE(lhFile, '<vertAlign val="' + ALLTRIM(xl_strformat.fvpos) + '"/>')
+								ENDIF
+								IF !EMPTY(xl_strformat.fname)
+									FWRITE(lhFile, '<rFont val="' + ALLTRIM(xl_strformat.fname) + '"/>')
+								ENDIF
+								FWRITE(lhFile, '</rPr>')
+							ENDIF
+		*					IF xl_strformat.presvspace
+								FWRITE(lhFile, '<t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t>')
+		*					ELSE
+		*						FWRITE(lhFile, '<t>' + xl_strformat.stringxml + '</t>')
+		*					ENDIF
+							FWRITE(lhFile, '</r>')
+						ENDSCAN
+						FWRITE(lhFile, '</si>')
+						SELECT xl_strings
+					ELSE
+						IF xl_strings.presvspace
+							FWRITE(lhFile, '<si><t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t></si>')
+						ELSE
+							FWRITE(lhFile, '<si><t>' + xl_strings.stringxml + '</t></si>')
+						ENDIF
+					ENDIF
+				ENDSCAN
+				SET ORDER TO
+				FWRITE(lhFile, '</sst>')
+				FCLOSE(lhFile)
+				STRTOFILE(STRCONV(FILETOSTR(lcFileName), 9), lcFileName, 4)      && Save as UTF-8
+			ELSE
+		*-*		No strings are assigned to cells; remove from relationships if present
+				DELETE FROM xl_relationships WHERE workbook = tnWB AND reltype = "sharedStrings"
+			ENDIF
 			llSuccess = True
 		
 		CATCH TO loException
@@ -9204,127 +9558,147 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			FWRITE(lhFile, '<borders count="' + TRANSFORM(lnRecCount) + '">')
 			SCAN FOR workbook = tnWB
 				FWRITE(lhFile, '<border' + IIF(xl_borders.diagdn=1, ' diagonalDown="1"', '') + IIF(xl_borders.diagup=1, ' diagonalUp="1"', '') +'>')
-				IF xl_borders.lstyle = BORDER_STYLE_NONE
-					FWRITE(lhFile, '<left')
+				IF EMPTY(xl_borders.lstyle)
+					FWRITE(lhFile, '<left/>')
 				ELSE
-					FWRITE(lhFile, '<left style="' + ALLTRIM(xl_borders.lstyle) + '"')
-				ENDIF
-				DO CASE
-					CASE xl_borders.lcolor > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.lcolor) + '"/>')
-						FWRITE(lhFile, '</left>')
-			
-					CASE xl_borders.lindexed > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.lindexed) + '"/>')
-						FWRITE(lhFile, '</left>')
+					IF xl_borders.lstyle = BORDER_STYLE_NONE
+						FWRITE(lhFile, '<left')
+					ELSE
+						FWRITE(lhFile, '<left style="' + ALLTRIM(xl_borders.lstyle) + '"')
+					ENDIF
+					DO CASE
+						CASE xl_borders.lcolor > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.lcolor) + '"/>')
+							FWRITE(lhFile, '</left>')
 		
-					CASE xl_borders.ltheme > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.ltheme) +'" tint="' + TRANSFORM(xl_borders.ltint, "99.999999999999999") + '"/>')
-						FWRITE(lhFile, '</left>')
-					
-					OTHERWISE
-						FWRITE(lhFile, '/>')
-				ENDCASE
-				IF xl_borders.rstyle = BORDER_STYLE_NONE
-					FWRITE(lhFile, '<right')
+						CASE xl_borders.lindexed > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.lindexed) + '"/>')
+							FWRITE(lhFile, '</left>')
+		
+						CASE xl_borders.ltheme > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.ltheme) +'" tint="' + TRANSFORM(xl_borders.ltint, "99.999999999999999") + '"/>')
+							FWRITE(lhFile, '</left>')
+		
+						OTHERWISE
+							FWRITE(lhFile, '/>')
+					ENDCASE
+				ENDIF
+				IF EMPTY(xl_borders.rstyle)
+					FWRITE(lhFile, '<right/>')
 				ELSE
-					FWRITE(lhFile, '<right style="' + ALLTRIM(xl_borders.rstyle) + '"')
+					IF xl_borders.rstyle = BORDER_STYLE_NONE
+						FWRITE(lhFile, '<right')
+					ELSE
+						FWRITE(lhFile, '<right style="' + ALLTRIM(xl_borders.rstyle) + '"')
+					ENDIF
+					DO CASE
+						CASE xl_borders.rcolor > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.rcolor) + '"/>')
+							FWRITE(lhFile, '</right>')
+		
+						CASE xl_borders.rindexed > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.rindexed) + '"/>')
+							FWRITE(lhFile, '</right>')
+		
+		
+						CASE xl_borders.rtheme > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.rtheme) +'" tint="' + TRANSFORM(xl_borders.rtint, "99.999999999999999") + '"/>')
+							FWRITE(lhFile, '</right>')
+		
+						OTHERWISE
+							FWRITE(lhFile, '/>')
+					ENDCASE
 				ENDIF
-				DO CASE
-					CASE xl_borders.rcolor > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.rcolor) + '"/>')
-						FWRITE(lhFile, '</right>')
-		
-					CASE xl_borders.rindexed > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.rindexed) + '"/>')
-						FWRITE(lhFile, '</right>')
-		
-		
-					CASE xl_borders.rtheme > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.rtheme) +'" tint="' + TRANSFORM(xl_borders.rtint, "99.999999999999999") + '"/>')
-						FWRITE(lhFile, '</right>')
-		
-					OTHERWISE
-						FWRITE(lhFile, '/>')
-				ENDCASE
-				IF xl_borders.tstyle = BORDER_STYLE_NONE
-					FWRITE(lhFile, '<top')
+				IF EMPTY(xl_borders.tstyle)
+					FWRITE(lhFile, '<top/>')
 				ELSE
-					FWRITE(lhFile, '<top style="' + ALLTRIM(xl_borders.tstyle) + '"')
+					IF xl_borders.tstyle = BORDER_STYLE_NONE
+						FWRITE(lhFile, '<top')
+					ELSE
+						FWRITE(lhFile, '<top style="' + ALLTRIM(xl_borders.tstyle) + '"')
+					ENDIF
+					DO CASE
+						CASE xl_borders.tcolor > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.tcolor) + '"/>')
+							FWRITE(lhFile, '</top>')
+		
+						CASE xl_borders.tindexed > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.tindexed) + '"/>')
+							FWRITE(lhFile, '</top>')
+		
+						CASE xl_borders.ttheme > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.ttheme) +'" tint="' + TRANSFORM(xl_borders.ttint, "99.999999999999999") + '"/>')
+							FWRITE(lhFile, '</top>')
+		
+						OTHERWISE
+							FWRITE(lhFile, '/>')
+					ENDCASE
 				ENDIF
-				DO CASE
-					CASE xl_borders.tcolor > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.tcolor) + '"/>')
-						FWRITE(lhFile, '</top>')
-			
-					CASE xl_borders.tindexed > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.tindexed) + '"/>')
-						FWRITE(lhFile, '</top>')
-		
-					CASE xl_borders.ttheme > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.ttheme) +'" tint="' + TRANSFORM(xl_borders.ttint, "99.999999999999999") + '"/>')
-						FWRITE(lhFile, '</top>')
-		
-					OTHERWISE
-						FWRITE(lhFile, '/>')
-				ENDCASE
-				IF xl_borders.bstyle = BORDER_STYLE_NONE
-					FWRITE(lhFile, '<bottom')
+				IF EMPTY(xl_borders.bstyle)
+					FWRITE(lhFile, '<bottom/>')
 				ELSE
-					FWRITE(lhFile, '<bottom style="' + ALLTRIM(xl_borders.bstyle) + '"')
+					IF xl_borders.bstyle = BORDER_STYLE_NONE
+						FWRITE(lhFile, '<bottom')
+					ELSE
+						FWRITE(lhFile, '<bottom style="' + ALLTRIM(xl_borders.bstyle) + '"')
+					ENDIF
+					DO CASE
+						CASE xl_borders.bcolor > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.bcolor) + '"/>')
+							FWRITE(lhFile, '</bottom>')
+		
+						CASE xl_borders.bindexed > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.bindexed) + '"/>')
+							FWRITE(lhFile, '</bottom>')
+		
+						CASE xl_borders.btheme > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.btheme) +'" tint="' + TRANSFORM(xl_borders.btint, "99.999999999999999") + '"/>')
+							FWRITE(lhFile, '</bottom>')
+		
+						OTHERWISE
+							FWRITE(lhFile, '/>')
+					ENDCASE
 				ENDIF
-				DO CASE
-					CASE xl_borders.bcolor > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.bcolor) + '"/>')
-						FWRITE(lhFile, '</bottom>')
-			
-					CASE xl_borders.bindexed > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.bindexed) + '"/>')
-						FWRITE(lhFile, '</bottom>')
-		
-					CASE xl_borders.btheme > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.btheme) +'" tint="' + TRANSFORM(xl_borders.btint, "99.999999999999999") + '"/>')
-						FWRITE(lhFile, '</bottom>')
-		
-					OTHERWISE
-						FWRITE(lhFile, '/>')
-				ENDCASE
-				IF xl_borders.dstyle = BORDER_STYLE_NONE
-					FWRITE(lhFile, '<diagonal')
+				IF EMPTY(xl_borders.dstyle)
+					FWRITE(lhFile, '<diagonal/>')
 				ELSE
-					FWRITE(lhFile, '<diagonal style="' + ALLTRIM(xl_borders.dstyle) + '"')
+					IF xl_borders.dstyle = BORDER_STYLE_NONE
+						FWRITE(lhFile, '<diagonal')
+					ELSE
+						FWRITE(lhFile, '<diagonal style="' + ALLTRIM(xl_borders.dstyle) + '"')
+					ENDIF
+					DO CASE
+						CASE xl_borders.dcolor > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.dcolor) + '"/>')
+							FWRITE(lhFile, '</diagonal>')
+		
+						CASE xl_borders.dindexed > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.dindexed) + '"/>')
+							FWRITE(lhFile, '</diagonal>')
+		
+						CASE xl_borders.dtheme > 0
+							FWRITE(lhFile, '>')
+							FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.dtheme) +'" tint="' + TRANSFORM(xl_borders.dtint, "99.999999999999999") + '"/>')
+							FWRITE(lhFile, '</diagonal>')
+		
+						OTHERWISE
+							FWRITE(lhFile, '/>')
+					ENDCASE
 				ENDIF
-				DO CASE
-					CASE xl_borders.dcolor > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_borders.dcolor) + '"/>')
-						FWRITE(lhFile, '</diagonal>')
-		
-					CASE xl_borders.dindexed > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_borders.dindexed) + '"/>')
-						FWRITE(lhFile, '</diagonal>')
-		
-					CASE xl_borders.dtheme > 0
-						FWRITE(lhFile, '>')
-						FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_borders.dtheme) +'" tint="' + TRANSFORM(xl_borders.dtint, "99.999999999999999") + '"/>')
-						FWRITE(lhFile, '</diagonal>')
-		
-					OTHERWISE
-						FWRITE(lhFile, '/>')
-				ENDCASE
 				FWRITE(lhFile, '</border>')
 			ENDSCAN
 			FWRITE(lhFile, '</borders>')
