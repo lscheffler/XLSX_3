@@ -9,9 +9,11 @@ IF !EMPTY(lcTable)
 
 	loExcel = NEWOBJECT("VFPxWorkbookXLSX", "VFPxWorkbookXLSX.vcx")
 
-	loExcel.Savetabletoworkbook(lcAlias, lcAlias + "_test1.xlsx", .T., .T., lcAlias)
+	loReturn = loExcel.Savetabletoworkbook(lcAlias, lcAlias + "_test1.xlsx", .T., .T., lcAlias)
+	?"Sheet: " + TRANSFORM(loReturn.Sheet)
+	?"Workbook: " + TRANSFORM(loReturn.Workbook)
 
-	loExcel.Savetabletoworkbookex(lcAlias, lcAlias + "_test2.xlsx", .NULL., .T., lcAlias)
+	loReturn = loExcel.Savetabletoworkbookex(lcAlias, lcAlias + "_test2.xlsx", .NULL., .T., lcAlias)
 
 	USE IN SELECT(lcAlias)
 ENDIF

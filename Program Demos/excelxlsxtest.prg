@@ -1,5 +1,10 @@
 *PUBLIC loExcel   && to keep it from being destroyed and closing the cursors
 LOCAL lnTime, lnWb, lnSh, lnRow, lnCol
+
+IF !PEMSTATUS(_SCREEN, "System", 5) .OR. VARTYPE(_SCREEN.System) <> "O"
+	DO System.app
+ENDIF
+
 loExcel = NEWOBJECT("VFPxWorkbookXLSX", "VFPxWorkbookXLSX.vcx")
 loExcel.Demo()
 

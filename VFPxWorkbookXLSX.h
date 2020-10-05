@@ -24,6 +24,13 @@
 #DEFINE INSERT_RIGHT                     "RIGHT"
 #DEFINE INSERT_LEFT                      "LEFT"
 
+#DEFINE FILTER_OP_EQUAL                  "equal"
+#DEFINE FILTER_OP_GREATERTHAN            "greaterThan"
+#DEFINE FILTER_OP_GREATOREQUAL           "greaterThanOrEqual"
+#DEFINE FILTER_OP_LESSTHAN               "lessThan"
+#DEFINE FILTER_OP_LESSOREQUAL            "lessThanOrEqual"
+#DEFINE FILTER_OP_NOT_EQUAL              "notEqual"
+
 #DEFINE START_NUMERIC_FORMAT_ID          165
 
 #DEFINE SCOPE_WB_NAMED_RANGE             0                           && Scope of named range - workbook
@@ -190,6 +197,9 @@
 #DEFINE HEADERFOOTER_EVEN_PAGE                2
 #DEFINE HEADERFOOTER_SAME_PAGE                3
 
+#DEFINE HYPERLINK_TYPE_FILE              "F"
+#DEFINE HYPERLINK_TYPE_SHEET             "S"
+
 #DEFINE DATA_TYPE_NONE                   "X"
 #DEFINE DATA_TYPE_DATE                   "D"
 #DEFINE DATA_TYPE_DATETIME               "T"
@@ -202,6 +212,7 @@
 #DEFINE DATA_TYPE_TIME                   "M"
 #DEFINE DATA_TYPE_PERCENT                "P"
 #DEFINE DATA_TYPE_LOGICAL                "L"
+#DEFINE DATA_TYPE_VCHAR                  "V"
 
 #DEFINE FIELD_TYPE_DATE                   "D"
 #DEFINE FIELD_TYPE_DATETIME               "T"
@@ -287,10 +298,35 @@
 #DEFINE CELL_FORMAT_COMMA_INTEGER_RED_PAREN    38    && #,##0;[Red](#,##0)
 #DEFINE CELL_FORMAT_COMMA_FLOAT_PAREN          39    && #,##0.00;(#,##0.00)
 #DEFINE CELL_FORMAT_COMMA_FLOAT_RED_PAREN      40    && #,##0.00;[Red](#,##0.00)
+#DEFINE CELL_FORMAT_ACC_CURR_US_PAREN          44    && _("$"* #,##0.00_)
 #DEFINE CELL_FORMAT_TIME_MMSS                  45    && mm:ss
 #DEFINE CELL_FORMAT_TIME_H_MMSS                46    && [h]:mm:ss
+#DEFINE CELL_FORMAT_TEXT                       49    && Text
 #DEFINE CELL_FORMAT_CURRENCY_RED              901    && $#,##0.00;[Red]$#,##0.00
 #DEFINE CELL_FORMAT_ACC_CURR_POUNDS           902    && Accounting British Pounds, £#,##0.00
 #DEFINE CELL_FORMAT_ACC_CURR_EURO             903    && Accounting Euro, €#,##0.00
 #DEFINE CELL_FORMAT_CURR_POUNDS_RED           904    && British Pounds, £#,##0.00 RED
 #DEFINE CELL_FORMAT_CURR_EURO_RED             905    && Euro, €#,##0.00 RED
+
+#DEFINE RELS_SRC_WORKBOOK                    "W"
+#DEFINE RELS_SRC_SHEET                       "S"
+#DEFINE RELS_SRC_DRAWING                     "D"
+
+#DEFINE RELS_TYPE_CALCCHAIN                  "C"     && calcChain
+#DEFINE RELS_TYPE_DRAWING                    "D"     && drawings
+#DEFINE RELS_TYPE_EXTNLINK                   "E"     && externalLink
+#DEFINE RELS_TYPE_HYPERLINK                  "H"     && hyperlink
+#DEFINE RELS_TYPE_IMAGE                      "I"     && image
+#DEFINE RELS_TYPE_SHAREDSTRINGS              "S"     && sharedStrings
+#DEFINE RELS_TYPE_STYLES                     "Y"     && styles
+#DEFINE RELS_TYPE_THEME                      "T"     && theme
+#DEFINE RELS_TYPE_VBAPROJECT                 "V"     && VBA Macros
+#DEFINE RELS_TYPE_WORKSHEET                  "W"     && worksheet
+
+#DEFINE IMAGE_ANCHOR_TYPE_ABS                "A"
+#DEFINE IMAGE_ANCHOR_TYPE_ONE                "O"
+#DEFINE IMAGE_ANCHOR_TYPE_TWO                "T"
+
+#DEFINE IMAGE_ANCHOR_MOVE_ABS                "absolute"
+#DEFINE IMAGE_ANCHOR_MOVE_ONE                "oneCell"
+#DEFINE IMAGE_ANCHOR_MOVE_TWO                "twoCell"
