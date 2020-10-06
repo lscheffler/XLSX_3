@@ -98,6 +98,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getchecksum		&& Returns the checksum the string
 		*m: getchildnodecount		&& Returns the number of child nodes
 		*m: getchildnodeelement		&& Returns the selected child node
+		*m: getcolumnhidden		&& Returns the column hidden setting
 		*m: getcolumnincolrowpair		&& Returns the column (Ascii value) in a ColRow pair; i.e., returns A from A6 reference
 		*m: getcolumnobject		&& Gets the column object definition
 		*m: getcolumnwidth		&& Returns the column width
@@ -214,6 +215,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: setcellwordwrap		&& Sets the cell word-wrapping value
 		*m: setcellwordwraprange		&& Sets the word wrap for a range of cells
 		*m: setcolumnbestfit		&& Set the column to best fit
+		*m: setcolumnhidden		&& Sets the column hidden setting
 		*m: setcolumnwidth		&& Sets the column width
 		*m: setcolumnwidthrange		&& Sets the column width for a range of columns
 		*m: setcustompapersize		&& Sets the paper size based on custom dimensions
@@ -308,7 +310,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultpw = F771		&& Default password for protection; encoded vfpxworkbookxlsx
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 32B12		&& Release version of Class ***Integer
+	excelxlsxrelease = 32B13		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	nullvalue = .NULL.		&& Value to be assigned for field .NULL. values
@@ -354,6 +356,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="deleteimage" type="method" display="DeleteImage"/>
 		<memberdata name="fastextract" type="method" display="FastExtract"/>
 		<memberdata name="getchecksum" type="method" display="GetCheckSum"/>
+		<memberdata name="getcolumnhidden" type="method" display="GetColumnHidden"/>
 		<memberdata name="getcolumnobject" type="method" display="GetColumnObject"/>
 		<memberdata name="getdisplaygridlines" type="method" display="GetDisplayGridLines"/>
 		<memberdata name="getdwgpicdefinition" type="method" display="GetDwgPicDefinition"/>
@@ -386,6 +389,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="savemultigridtoworkbookex" type="method" display="SaveMultiGridToWorkbookEx"/>
 		<memberdata name="savetabletoworkbookex" type="method" display="SaveTableToWorkbookEx"/>
 		<memberdata name="savevfpsettings" type="method" display="SaveVFPSettings"/>
+		<memberdata name="setcolumnhidden" type="method" display="SetColumnHidden"/>
 		<memberdata name="setdisplaygridlines" type="method" display="SetDisplayGridLines"/>
 		<memberdata name="setsheetgroupsettings" type="method" display="SetSheetGroupSettings"/>
 		<memberdata name="setsheetprotection" type="method" display="SetSheetProtection"/>
@@ -1934,7 +1938,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		INDEX ON BINTOC(workbook)+BINTOC(sheet)+BINTOC(begrow)+BINTOC(begcol) TAG mergecell FOR !DELETED()
 		SET INDEX TO
 		
-		CREATE CURSOR xl_columns (workbook I, sheet I, col I, width N(16,9), bestfit L, collevel I, collapsed L)
+		CREATE CURSOR xl_columns (workbook I, sheet I, col I, width N(16,9), bestfit L, collevel I, collapsed L, hidden I)
 		INDEX ON sheet TAG sheet
 		INDEX ON workbook TAG workbook
 		INDEX ON BINTOC(workbook)+BINTOC(sheet)+BINTOC(col) TAG col
@@ -3429,6 +3433,24 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LOCAL lcElement
 		lcElement = STREXTRACT(tcNode, '<', '>', tnChild+1, 1)
 		RETURN STREXTRACT(tcNode, '<'+lcElement+'>', '</'+lcElement+'>', 1, 5)
+	ENDPROC
+
+	PROCEDURE getcolumnhidden		&& Returns the column hidden setting
+		LPARAMETERS tnWB, tnSheet, tnColumn
+		LOCAL lxReturn
+		IF PCOUNT() < 3
+			RETURN .NULL.
+		ENDIF
+		IF this.GetSheetRecord(tnWB, tnSheet)
+			IF SEEK(this.GetColWidthKeyExpr(tnWB, tnSheet, tnColumn), "xl_columns", "col")
+				lxReturn = IIF(xl_columns.hidden = 1, True, False)
+			ELSE
+				lxReturn = False
+			ENDIF
+		ELSE
+			lxReturn = .NULL.
+		ENDIF
+		RETURN lxReturn
 	ENDPROC
 
 	PROTECTED PROCEDURE getcolumnincolrowpair		&& Returns the column (Ascii value) in a ColRow pair; i.e., returns A from A6 reference
@@ -6634,7 +6656,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LOCAL llAutoFilter, llDeleteCol, llDeleteRow, llFormatCell, llFormatCol, llFormatRow, llInsertCol, llInsertRow, llInsertHypr
 		LOCAL llObjects, llPivotTbl, llScenarios, llSelLocked, llSelUnlock, llSort, lcProtection, llProtection, lcCol, lnMinCol, lnMaxCol
 		LOCAL lcPassword, lcAlgorithm, lnShowGrid, llAddHyperLink, lcTgtFile, lcTgtSheet, lcRelsFileName, lcRelsFile, lcRId, lcDrawing
-		LOCAL loException, lcRelationships, loCols, loValidations, llStringsXMLAdded
+		LOCAL loException, lcRelationships, loCols, loValidations, llStringsXMLAdded, lnHidden
 		llStringsXMLAdded = False
 		*-*	Open the sheet for processing
 		TRY
@@ -6770,9 +6792,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			lnMinCol = CAST(this.GetNodeAttributeValue(lcCol, "min") AS I)
 			lnMaxCol = CAST(this.GetNodeAttributeValue(lcCol, "max") AS I)
 			lnWidth  = CAST(this.GetNodeAttributeValue(lcCol, "width") AS N(16,9)) - 0.71093750
+			lnHidden = CAST(this.GetNodeAttributeValue(lcCol, "hidden") AS I)
 			lnColLvl = CAST(this.GetNodeAttributeValue(lcCol, "outlineLevel") AS I)
 			FOR lnCol=lnMinCol TO lnMaxCol
-				INSERT INTO xl_columns (workbook, sheet, col, width, collevel, collapsed) VALUES (tnWB, tnSheet, lnCol, lnWidth, lnColLvl, False)
+				INSERT INTO xl_columns (workbook, sheet, col, width, collevel, collapsed, hidden) VALUES (tnWB, tnSheet, lnCol, lnWidth, lnColLvl, False, lnHidden)
 			ENDFOR
 			lcCol = this.GetXMLNextSegment(loCols)
 		ENDDO
@@ -9907,6 +9930,30 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN llReturn
 	ENDPROC
 
+	PROCEDURE setcolumnhidden		&& Sets the column hidden setting
+		LPARAMETERS tnWB, tnSheet, tnColumn, tlHidden
+		LOCAL llReturn, lcAlias, lnHidden
+		IF PCOUNT() < 4 .OR. VARTYPE(tlHidden) != "L"
+			RETURN False
+		ENDIF
+		lcAlias  = ALIAS()
+		lnHidden = IIF(tlHidden, 1, 0)
+		IF this.GetSheetRecord(tnWB, tnSheet)
+			IF SEEK(this.GetColWidthKeyExpr(tnWB, tnSheet, tnColumn), "xl_columns", "col")
+				REPLACE xl_columns.hidden WITH lnHidden IN xl_columns
+			ELSE
+				INSERT INTO xl_columns (workbook, sheet, col, hidden, bestfit) VALUES (tnWB, tnSheet, tnColumn, lnHidden, False)
+			ENDIF
+			llReturn = True
+		ELSE
+			llReturn = False
+		ENDIF
+		IF !EMPTY(lcAlias)
+			SELECT &lcAlias
+		ENDIF
+		RETURN llReturn
+	ENDPROC
+
 	PROCEDURE setcolumnwidth		&& Sets the column width
 		LPARAMETERS tnWB, tnSheet, tnColumn, tnWidth
 		LOCAL llReturn, lcAlias
@@ -11541,16 +11588,20 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					SCAN FOR workbook = tnWB .AND. sheet = tnSheet
 						FWRITE(lhShFile, '<col min="' + TRANSFORM(xl_columns.col) + '" max="' + TRANSFORM(xl_columns.col) + '"')
 						DO CASE
-							CASE xl_columns.width > -1.00 .AND. xl_columns.collevel = 0
+							CASE xl_columns.width > -1.00 .AND. xl_columns.collevel = 0 .AND. xl_columns.hidden = 0
 								FWRITE(lhShFile, ' width="' + TRANSFORM(xl_columns.width+0.7109375) + '" customWidth="1"/>')
-							
+		
+							CASE xl_columns.width > -1.00 .AND. xl_columns.collevel = 0 .AND. xl_columns.hidden = 1
+								FWRITE(lhShFile, ' width="' + TRANSFORM(xl_columns.width+0.7109375) + '" hidden="1" customWidth="1"/>')
+		
 							CASE xl_columns.width = -1.00 .AND. xl_columns.collevel > 0
 								FWRITE(lhShFile, ' outlineLevel="' + TRANSFORM(xl_columns.collevel) + '"/>')
-			
+		
 							CASE xl_columns.width > -1.00 .AND. xl_columns.collevel > 0
 								FWRITE(lhShFile, ' width="' + TRANSFORM(xl_columns.width+0.7109375) + '" customWidth="1" outlineLevel="' + TRANSFORM(xl_columns.collevel) + '"/>')
-			
+		
 							OTHERWISE
+								FWRITE(lhShFile, '/>')
 						ENDCASE
 					ENDSCAN
 					SET ORDER TO
