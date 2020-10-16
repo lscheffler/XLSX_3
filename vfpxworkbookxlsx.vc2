@@ -310,7 +310,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultpw = F771		&& Default password for protection; encoded vfpxworkbookxlsx
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 32B13		&& Release version of Class ***Integer
+	excelxlsxrelease = 32B14		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	nullvalue = .NULL.		&& Value to be assigned for field .NULL. values
@@ -1882,7 +1882,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 								protection L, password C(50), algorithm C(10), autofilter L, deletecol L, deleterow L, formatcell L, formatcol L, formatrow L, ;
 								insertcol L, insertrow L, inserthyper L, OBJECTS L, pivottbl L, scenarios L, sellocked L, selunlocked L, sort L, ;
 								addfilter L, filtbegcol I, filtendcol I)
-		INDEX ON sheet TAG sheet
 		INDEX ON workbook TAG workbook
 		INDEX ON BINTOC(workbook)+UPPER(ALLTRIM(shname)) TAG shname
 		INDEX ON BINTOC(workbook)+BINTOC(sheet) TAG sheet FOR !DELETED()
@@ -3796,6 +3795,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 									ENDIF
 		
 								OTHERWISE                        && Bug fix by Doug Hennig
+									lnLenDecPart = LEN(lcDecPart)
 									IF ',' $ toColumn.InputMask
 										toColumn.FormatCode = '#,##0.' + REPLICATE('0', lnLenDecPart)
 									ELSE
@@ -12846,7 +12846,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+ LF)
 			FWRITE(lhFile, '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">')
 		
-		*-*	Write the workbook protectiob
+		*-*	Write the workbook protection
 			IF xl_workbooks.protection
 				FWRITE(lhFile, '<workbookProtection workbookPassword="' + ALLTRIM(xl_workbooks.password) + '"')
 				IF !EMPTY(xl_workbooks.algorithm)
@@ -12861,16 +12861,17 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			SET ORDER TO TAG relid
 			SCAN FOR workbook = tnWB .AND. reltype = RELS_TYPE_WORKSHEET .AND. relsrc = RELS_SRC_WORKBOOK
 				IF SEEK(BINTOC(tnWB)+BINTOC(xl_relationships.sheet), "xl_sheets", "sheet")
+					FWRITE(lhFile, '<sheet r:id="rId' + TRANSFORM(xl_relationships.relid) + '" sheetId="' + TRANSFORM(xl_sheets.sheet) + '"')
 					DO CASE
 						CASE xl_sheets.state = VISIBLE_SHEET_STATE
-							FWRITE(lhFile, '<sheet r:id="rId' + TRANSFORM(xl_relationships.relid) + '" sheetId="' + TRANSFORM(xl_sheets.sheet) + '" name="' + ALLTRIM(xl_sheets.shname) + '"/>')
 			
 						CASE xl_sheets.state = HIDDEN_SHEET_STATE
-							FWRITE(lhFile, '<sheet r:id="rId' + TRANSFORM(xl_relationships.relid) + '" sheetId="' + TRANSFORM(xl_sheets.sheet) + '" state="hidden" name="' + ALLTRIM(xl_sheets.shname) + '"/>')
+							FWRITE(lhFile, ' state="hidden"')
 						
 						CASE xl_sheets.state = VERYHIDDEN_SHEET_STATE
-							FWRITE(lhFile, '<sheet r:id="rId' + TRANSFORM(xl_relationships.relid) + '" sheetId="' + TRANSFORM(xl_sheets.sheet) + '" state="veryHidden" name="' + ALLTRIM(xl_sheets.shname) + '"/>')
+							FWRITE(lhFile, ' state="veryHidden"')
 					ENDCASE
+					FWRITE(lhFile, ' name="' + ALLTRIM(xl_sheets.shname) + '"/>')
 				ELSE
 					THROW
 				ENDIF
