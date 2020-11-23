@@ -257,7 +257,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: writestringsxml		&& Writes the sharedStrings XML
 		*m: writestylesxml		&& Writes the styles.xml support file
 		*m: writesupportxmls		&& Writes the [Content_Types].xml, .rels, core.xml, workbook.xml.rels and app.xml files
-		*m: writevaluetosheetxml		&& Writes the value to the sheet xml
 		*m: writeworkbookxml		&& Writes the workbook XML
 		*p: autotrimsheetname		&& Indicates to auto-trim sheet name to max length ***Boolean
 		*p: codepage		&& CodePage to use for the Strings cursor
@@ -310,7 +309,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	defaultpw = F771		&& Default password for protection; encoded vfpxworkbookxlsx
 	defaultsheetname = Sheet		&& Default sheet name (language specific)
 	errorlevelid = 0		&& Error level Id ***Integer
-	excelxlsxrelease = 32B14		&& Release version of Class ***Integer
+	excelxlsxrelease = 32B16		&& Release version of Class ***Integer
 	Height = 17
 	Name = "vfpxworkbookxlsx"
 	nullvalue = .NULL.		&& Value to be assigned for field .NULL. values
@@ -405,7 +404,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="writedrawingdefinitionxml" type="method" display="WriteDrawingDefinitionXML"/>
 		<memberdata name="writeimagerelationshipsxml" type="method" display="WriteImageRelationshipsXML"/>
 		<memberdata name="writesheetrelationshipsxml" type="method" display="WriteSheetRelationshipsXML"/>
-		<memberdata name="writevaluetosheetxml" type="method" display="WriteValueToSheetXML"/>
 		</VFPData>		&& XML Metadata for customizable properties
 	
 	PROCEDURE addautofilter		&& Adds a filter to the column range
@@ -1791,6 +1789,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROTECTED PROCEDURE createworkingcursors		&& Creates the working cursors for worksheet definitions
+		LOCAL lcCollate
 		IF USED('xl_strings')
 			RETURN
 		ENDIF
@@ -1858,6 +1857,10 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			OTHERWISE
 				CREATE CURSOR xl_strings (id I, workbook I, checksum C(230), stringxml M, stringval M, presvspace L, formatted L)
 		ENDCASE
+		
+		lcCollate = SET('COLLATE')
+		SET COLLATE TO 'MACHINE'
+		
 		INDEX ON BINTOC(workbook)+BINTOC(id) TAG id FOR !DELETED()
 		INDEX ON BINTOC(workbook)+PADL(id, 10, '0') TAG sortorder FOR !DELETED()
 		INDEX ON BINTOC(workbook)+checksum TAG stringndx
@@ -2046,6 +2049,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		INDEX ON BINTOC(workbook)+BINTOC(sheet)+BINTOC(begrow)+BINTOC(begcol)+BINTOC(endrow)+BINTOC(endcol) TAG hyperlink FOR !DELETED()
 		SET INDEX TO
 		
+		SET COLLATE TO lcCollate
 	ENDPROC
 
 	PROTECTED PROCEDURE createworkingdirectories		&& Creates the working directories for the XML files
@@ -7885,10 +7889,64 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 						lxCellValue = .NULL.
 					ENDTRY
 					IF ISNULL(lxCellValue)
-						this.WriteValueToSheetXML(lhFile, this.NullValue, loGrid.Columns(lnCol).FieldType, lnCol, lnRow, lnFmtId)
-					ELSE
-						this.WriteValueToSheetXML(lhFile, lxCellValue, loGrid.Columns(lnCol).FieldType, lnCol, lnRow, lnFmtId)
+						lxCellValue = this.NullValue
 					ENDIF
+					DO CASE
+						CASE ISNULL(lxCellValue) .OR. EMPTY(lxCellValue)      && Apply formatting to cell only
+							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '"></c>')
+					
+						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_DATE
+							IF lxCellValue >= DATE(1900, 1, 1)
+								lxCellValue = TRANSFORM(INT(lxCellValue - DATE(1900, 1, 1) + 2))
+								FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="n">')
+								FWRITE(lhFile, '<v>' + TRANSFORM(lxCellValue) + '</v></c>')
+							ELSE
+								lxCellValue = TRANSFORM(lxCellValue)
+								FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="inlineStr">')
+								FWRITE(lhFile, '<is><t>' + this.GetXMLString(lxCellValue) + '</t></is>')
+								FWRITE(lhFile, '</c>')
+							ENDIF
+					
+						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_DATETIME
+							IF TTOD(lxCellValue) >= DATE(1900, 1, 1)
+								lnSetDecimals = SET("DECIMALS")
+								SET DECIMALS TO 12
+								lnWholePart = INT(TTOD(lxCellValue) - DATE(1900, 1, 1) + 2)
+								lnFractPart = ((HOUR(lxCellValue) * 60 + MINUTE(lxCellValue)) * 60 + SEC(lxCellValue)) / (24 * 60 * 60)
+								lxCellValue = TRANSFORM(lnWholePart + lnFractPart)
+								FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="n">')
+								FWRITE(lhFile, '<v>' + TRANSFORM(lxCellValue) + '</v></c>')
+								SET DECIMALS TO (lnSetDecimals)
+							ELSE
+								lxCellValue = TRANSFORM(lxCellValue)
+								FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="inlineStr">')
+								FWRITE(lhFile, '<is><t>' + this.GetXMLString(lxCellValue) + '</t></is>')
+								FWRITE(lhFile, '</c>')
+							ENDIF
+					
+						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_LOGICAL
+							lxCellValue = IIF(lxCellValue, GETWORDNUM(this.TrueFalseValue, 1, "|"), GETWORDNUM(this.TrueFalseValue, 2, "|"))
+							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="inlineStr">')
+							FWRITE(lhFile, '<is><t>' + this.GetXMLString(lxCellValue) + '</t></is>')
+							FWRITE(lhFile, '</c>')
+					
+						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_CURRENCY
+							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="n">')
+							FWRITE(lhFile, '<v>' + TRANSFORM(MTON(lxCellValue)) + '</v></c>')
+					
+						CASE INLIST(loGrid.Columns(lnCol).FieldType, FIELD_TYPE_CHAR, FIELD_TYPE_VCHAR, FIELD_TYPE_MEMO)
+							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="inlineStr">')
+							FWRITE(lhFile, '<is><t>' + this.GetXMLString(ALLTRIM(lxCellValue)) + '</t></is>')
+							FWRITE(lhFile, '</c>')
+					
+						CASE INLIST(loGrid.Columns(lnCol).FieldType, FIELD_TYPE_INT, FIELD_TYPE_FLOAT, FIELD_TYPE_NUMERIC, FIELD_TYPE_DOUBLE)
+							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="n">')
+							FWRITE(lhFile, '<v>' + TRANSFORM(lxCellValue) + '</v></c>')
+					
+						OTHERWISE
+							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" t="inlineStr">')
+							FWRITE(lhFile, '<is><t>Unsupported Field Type</t></is></c>')
+					ENDCASE
 				ENDFOR
 				FWRITE(lhFile, '</row>')
 			ENDSCAN
@@ -12761,76 +12819,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			RAISEEVENT(this, "OnShowErrorMessage", 18, "Unable to create workbook supporting XMLs")
 		ENDTRY
 		RETURN llSuccess
-	ENDPROC
-
-	PROTECTED PROCEDURE writevaluetosheetxml		&& Writes the value to the sheet xml
-		LPARAMETERS thFile, txCellValue, tcFieldType, tnCol, tnRow, tnFmtId
-		LOCAL lnSetDecimals, lnWholePart, lnFractPart
-		
-		DO CASE
-			CASE ISNULL(txCellValue)
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '"></c>')
-		
-			CASE INLIST(tcFieldType, DATA_TYPE_CHAR, DATA_TYPE_DATE, DATA_TYPE_DATETIME) .AND. EMPTY(txCellValue)
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '"></c>')
-		
-			CASE tcFieldType = DATA_TYPE_DATE
-				IF txCellValue >= DATE(1900, 1, 1)
-					txCellValue = TRANSFORM(INT(txCellValue - DATE(1900, 1, 1) + 2))
-					FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="n">')
-					FWRITE(thFile, '<v>' + TRANSFORM(txCellValue) + '</v></c>')
-				ELSE
-					txCellValue = TRANSFORM(txCellValue)
-					FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="inlineStr">')
-					FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is>')
-					FWRITE(thFile, '</c>')
-				ENDIF
-		
-			CASE tcFieldType = DATA_TYPE_DATETIME
-				IF TTOD(txCellValue) >= DATE(1900, 1, 1)
-					lnSetDecimals = SET("DECIMALS")
-					SET DECIMALS TO 12
-					lnWholePart = INT(TTOD(txCellValue) - DATE(1900, 1, 1) + 2)
-					lnFractPart = ((HOUR(txCellValue) * 60 + MINUTE(txCellValue)) * 60 + SEC(txCellValue)) / (24 * 60 * 60)
-					txCellValue = TRANSFORM(lnWholePart + lnFractPart)
-					FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="n">')
-					FWRITE(thFile, '<v>' + TRANSFORM(txCellValue) + '</v></c>')
-					SET DECIMALS TO (lnSetDecimals)
-				ELSE
-					txCellValue = TRANSFORM(txCellValue)
-					FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="inlineStr">')
-					FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is>')
-					FWRITE(thFile, '</c>')
-				ENDIF
-		
-			CASE tcFieldType = DATA_TYPE_LOGICAL
-				txCellValue = IIF(txCellValue, GETWORDNUM(this.TrueFalseValue, 1, "|"), GETWORDNUM(this.TrueFalseValue, 2, "|"))
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>' + this.GetXMLString(txCellValue) + '</t></is>')
-				FWRITE(thFile, '</c>')
-		
-			CASE tcFieldType = DATA_TYPE_CURRENCY
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="n">')
-				FWRITE(thFile, '<v>' + TRANSFORM(MTON(txCellValue)) + '</v></c>')
-		
-			CASE tcFieldType = DATA_TYPE_CHAR
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>' + this.GetXMLString(ALLTRIM(txCellValue)) + '</t></is>')
-				FWRITE(thFile, '</c>')
-		
-			CASE INLIST(tcFieldType, DATA_TYPE_INT, DATA_TYPE_FLOAT)
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="n">')
-				FWRITE(thFile, '<v>' + TRANSFORM(txCellValue) + '</v></c>')
-		
-			CASE tcFieldType = DATA_TYPE_VCHAR
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" s="' + TRANSFORM(tnFmtId) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>' + this.GetXMLString(ALLTRIM(txCellValue)) + '</t></is>')
-				FWRITE(thFile, '</c>')
-		
-			OTHERWISE
-				FWRITE(thFile, '<c r="' + this.ColumnIndexToAscii(tnCol) + TRANSFORM(tnRow) + '" t="inlineStr">')
-				FWRITE(thFile, '<is><t>Unsupported Field Type</t></is></c>')
-		ENDCASE
 	ENDPROC
 
 	PROTECTED PROCEDURE writeworkbookxml		&& Writes the workbook XML
