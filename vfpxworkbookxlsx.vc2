@@ -2078,26 +2078,39 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROTECTED PROCEDURE CreateWorkingDirectories		&& Creates the working directories for the XML files
-		LOCAL lcDir, loException
-		lcDir = ADDBS(SYS(2023)) + SYS(2015)
+		LOCAL lcDir, loException, lnCnt
+		lnCnt = 0
 		TRY
+		*-*	Get a unique directory name that is not used  [suggestion by Doug Hennig]
+			lcDir = ADDBS(ADDBS(SYS(2023)) + SYS(2015))
+			DO WHILE DIRECTORY(lcDir)
+				INKEY(0.1, 'H')
+				lcDir = ADDBS(ADDBS(SYS(2023)) + SYS(2015))
+				lnCnt = lnCnt + 1
+				IF lnCnt > 20
+					THROW "Not able to create a unique directory name in CreateWorkingDirectories() method"
+				ENDIF
+			ENDDO
+		
+		*-*	Build the directory structure for the workbook files
 			MKDIR (lcDir)
-			MKDIR (lcDir + "\_rels")
-			MKDIR (lcDir + "\docProps")
-			MKDIR (lcDir + "\xl")
-			MKDIR (lcDir + "\xl\_rels")
-			MKDIR (lcDir + "\xl\drawings")
-			MKDIR (lcDir + "\xl\drawings\_rels")
-			MKDIR (lcDir + "\xl\externalLinks")
-			MKDIR (lcDir + "\xl\externalLinks\_rels")
-			MKDIR (lcDir + "\xl\media")
-			MKDIR (lcDir + "\xl\printerSettings")
-			MKDIR (lcDir + "\xl\theme")
-			MKDIR (lcDir + "\xl\worksheets")
-			MKDIR (lcDir + "\xl\worksheets\_rels")
+			MKDIR (lcDir + "_rels")
+			MKDIR (lcDir + "docProps")
+			MKDIR (lcDir + "xl")
+			MKDIR (lcDir + "xl\_rels")
+			MKDIR (lcDir + "xl\drawings")
+			MKDIR (lcDir + "xl\drawings\_rels")
+			MKDIR (lcDir + "xl\externalLinks")
+			MKDIR (lcDir + "xl\externalLinks\_rels")
+			MKDIR (lcDir + "xl\media")
+			MKDIR (lcDir + "xl\printerSettings")
+			MKDIR (lcDir + "xl\theme")
+			MKDIR (lcDir + "xl\worksheets")
+			MKDIR (lcDir + "xl\worksheets\_rels")
 		
 		CATCH TO loException
 			lcDir = .NULL.
+			RAISEEVENT(this, "OnShowErrorMessage", 2, loException.Message)
 		ENDTRY
 		RETURN ADDBS(lcDir)
 	ENDPROC
@@ -3795,8 +3808,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				DO CASE
 					CASE EMPTY(toColumn.Format) .OR. toColumn.Format = "R"                   && No formatting specified; check InputMask property
 						IF EMPTY(toColumn.InputMask)
-							lnLenDecPart = toColumn.FieldDecPlaces
-							toColumn.FormatCode = '#0.' + REPLICATE('0', lnLenDecPart)
+							toColumn.FormatCode = '#0.' + REPLICATE('0', toColumn.FieldDecPlaces)
 						ELSE
 							lcDecPart    = GETWORDNUM(toColumn.InputMask, 2, '.')
 							lcNonNumeric = CHRTRAN(toColumn.InputMask, '!0123456789.,', '')
@@ -3924,22 +3936,22 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDCASE
 				ELSE
 					lcDollarSign = IIF("$" $ toColumn.Format, "&quot;$&quot;", "")
-					lnLenDecPart = LEN(GETWORDNUM(toColumn.InputMask, 2, '.'))
+					lnLenDecPart = LEN(GETWORDNUM(toColumn.InputMask, 2, "."))
 					tnNumFmtsId  = tnNumFmtsId + 1
 					toColumn.NumFmtsIndex = this.GetNextId(tnWB, 0, "xl_numfmts")
-					IF lnLenDecPart > 0
-						IF ',' $ toColumn.InputMask
-							toColumn.FormatCode = lcDollarSign + '#,##0.' + REPLICATE('0', lnLenDecPart)
-						ELSE
-							toColumn.FormatCode = lcDollarSign + '#0.' + REPLICATE('0', lnLenDecPart)
-						ENDIF
-					ELSE
-						IF ',' $ toColumn.InputMask
-							toColumn.FormatCode = lcDollarSign + '#,##0'
-						ELSE
-							toColumn.FormatCode = lcDollarSign + '#0'
-						ENDIF
-					ENDIF
+					DO CASE
+						CASE lnLenDecPart > 0 .AND. "," $ toColumn.InputMask
+							toColumn.FormatCode = lcDollarSign + "#,##0." + REPLICATE("0", lnLenDecPart)
+		
+						CASE lnLenDecPart > 0 .AND. !("," $ toColumn.InputMask)
+							toColumn.FormatCode = lcDollarSign + "#0." + REPLICATE("0", lnLenDecPart)
+						
+						CASE lnLenDecPart = 0 .AND. "," $ toColumn.InputMask
+							toColumn.FormatCode = lcDollarSign + "#,##0"
+		
+						CASE lnLenDecPart = 0 .AND. !("," $ toColumn.InputMask)
+							toColumn.FormatCode = lcDollarSign + "#0"
+					ENDCASE
 				ENDIF
 		ENDCASE
 		RETURN tnNumFmtsId
