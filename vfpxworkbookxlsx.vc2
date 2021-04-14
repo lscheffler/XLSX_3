@@ -1915,8 +1915,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		INDEX ON BINTOC(workbook)+BINTOC(sheet) TAG sheet FOR !DELETED()
 		SET INDEX TO
 		
-		CREATE CURSOR xl_cells (workbook I, sheet I, cellrow I, cellcol I, cellvalue M, datatype C(1), cellformula M, stringid I, cellxfs I, numdec I, ;
-								celldeleted L, validndx I)
+		CREATE CURSOR xl_cells (workbook I, sheet I, cellrow I, cellcol I, cellvalue M, datatype C(1), cellformula M, stringid I, cellxfs I, numdec I, celldeleted L, validndx I)
 		INDEX ON sheet TAG sheet
 		INDEX ON cellrow TAG cellrow
 		INDEX ON cellcol TAG cellcol
@@ -9123,7 +9122,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ELSE
 				lnCellXfsId = this.GetCellXfsId(tnWB, 0, 0, 0, lnBorderId, "", "", 0, 0, 0)
 				INSERT INTO xl_cells (workbook, sheet, cellrow, cellcol, datatype, cellxfs, celldeleted, numdec, validndx) ;
-					VALUES (tnWB, tnSheet, tnCellRow, tnCellCol, DATA_TYPE_NONE, lnCellXfsId, False, -1, 0, True)
+					VALUES (tnWB, tnSheet, tnCellRow, tnCellCol, DATA_TYPE_NONE, lnCellXfsId, False, -1, 0)
 				this.SetRowMaxColumn(tnWB, tnSheet, tnCellRow, tnCellCol)
 			ENDIF
 			llReturn = True
