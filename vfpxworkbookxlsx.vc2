@@ -2111,7 +2111,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			lcDir = .NULL.
 			RAISEEVENT(this, "OnShowErrorMessage", 2, loException.Message)
 		ENDTRY
-		RETURN ADDBS(lcDir)
+		IF ISNULL(lcDir)                   && Correction identified by Doug Hennig
+			RETURN lcDir
+		ELSE
+			RETURN ADDBS(lcDir)
+		ENDIF
 	ENDPROC
 
 	PROCEDURE Debug_Assign
@@ -2358,7 +2362,8 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 
 	PROCEDURE Demo		&& Demo for the features of this class
 		LOCAL lnWb, lnSh1, lnRow, lnCol, lnSh2, lnSh3, lnSh4, lnCnt, lnFormat, llBoolean, lcNamedRange
-		LOCAL lnSh7, lnSh5, loInline, lnStyle1, lnStyle2, lnBorders, lcString, loProtection, lnCellXfsId
+		LOCAL lnSh7, lnSh5, loInline, lnStyle1, lnStyle2, lnBorders, lcString, loProtection, lnCellXfsId, lnStyle3
+		LOCAL lnStyle4
 		lnWb = this.CreateWorkbook("ExcelTest.xlsx")
 		IF lnWb = 0
 			RETURN False
@@ -2743,6 +2748,18 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		
 		this.SetCellValue(lnWb, lnSh4, 1, 2, "RGB(255,0,0)")
 		this.SetCellFill(lnWb, lnSh4, 1, 2, RGB(255,0,0))
+		
+		lnStyle3 = this.CreateFormatStyle(lnWB)                                                 && Create the base style definition
+		this.AddStyleFill(lnWB, lnStyle3, RGB(51,102,255), RGB(51,102,255), FILL_STYLE_SOLID)   && Fill Solid off-blue backgrond and foreground (foreground is ignored when solid)
+		this.AddStyleFont(lnWB, lnStyle3, , , , , RGB(255,0,0))                                 &&  Font red foreground
+		this.SetCellStyle(lnWb, lnSh4, 2, 1, lnStyle3)
+		this.SetCellValue(lnWb, lnSh4, 2, 1, "Fill Using Styles")
+		
+		lnStyle4 = this.CreateFormatStyle(lnWB)                                                 && Create the base style definition
+		this.AddStyleFill(lnWB, lnStyle4, RGB(255,0,0), RGB(255,0,0), FILL_STYLE_SOLID)         && Fill Solid Red background and foreground (foreground is ignored when solid)
+		this.AddStyleFont(lnWB, lnStyle4, , , , , RGB(255,255,255))                             && Font White foreground
+		this.SetCellStyle(lnWb, lnSh4, 2, 2, lnStyle4)
+		this.SetCellValue(lnWb, lnSh4, 2, 2, "Fill Using Styles")
 		
 		this.SetCellAlignmentRange(lnWb, lnSh4, 1, 1, 1, 2, CELL_HORIZ_ALIGN_CENTER, CELL_VERT_ALIGN_CENTER)
 		
@@ -9597,7 +9614,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			ELSE
 				INSERT INTO xl_cells (workbook, sheet, cellrow, cellcol, datatype, cellxfs, celldeleted, numdec, validndx) ;
 					VALUES (tnWB, tnSheet, tnCellRow, tnCellCol, DATA_TYPE_NONE, tnCellXfsId, False, -1, 0)
-				this.SetRowMaxColumn(tnWB, tnSheet, lnRow, lnCol)
+				this.SetRowMaxColumn(tnWB, tnSheet, tnCellRow, tnCellCol)
 			ENDIF
 			RETURN True
 		ELSE
