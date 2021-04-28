@@ -65,7 +65,7 @@ DEFINE CLASS form1 AS form
 		Name = "clsVFPxWorkbookXLSX", ;
 		Top = 9, ;
 		Width = 129
-		*< END OBJECT: ClassLib="vfpxworkbookxlsx.vcx" BaseClass="label" />
+		*< END OBJECT: ClassLib="..\vfpxworkbookxlsx.vcx" BaseClass="label" />
 
 	ADD OBJECT 'Command1' AS commandbutton WITH ;
 		Caption = "Export Northwind Customers", ;
@@ -118,6 +118,7 @@ DEFINE CLASS form1 AS form
 		Column2.ReadOnly = .T., ;
 		Column3.Name = "Column3", ;
 		Column3.ReadOnly = .T., ;
+		Column4.DynamicFontBold = "", ;
 		Column4.FontName = "Times New Roman", ;
 		Column4.FontSize = 10, ;
 		Column4.Name = "Column4", ;
@@ -240,8 +241,11 @@ DEFINE CLASS form1 AS form
 		lcTable = ADDBS(SYS(2004)) + "Samples\Northwind\Customers.dbf"
 		lcTable = LOCFILE(lcTable)
 		IF !ISNULL(lcTable) .AND. FILE(lcTable)
-		SET STEP ON 
-			thisform.clsVFPxWorkbookXLSX.SaveTabletoWorkbook(lcTable, lcExcel, .T., .T.)
+			SELECT customerid, companyname, address FROM customers INTO CURSOR c_temp
+			thisform.clsVFPxWorkbookXLSX.SaveTabletoWorkbook("c_temp", "CursorTest", .T., .T.)
+			USE IN SELECT('c_temp')
+		
+		*	thisform.clsVFPxWorkbookXLSX.SaveTabletoWorkbook(lcTable, lcExcel, .T., .T.)
 		*	thisform.clsVFPxWorkbookXLSX.SaveTableToWorkbookEx(lcTable, lcExcel, .NULL., .T., "Customers")
 			WAIT WINDOW "Saved To Excel" NOWAIT
 		ENDIF
@@ -255,7 +259,10 @@ DEFINE CLASS form1 AS form
 	PROCEDURE Command3.Click
 		LOCAL lcExcel, lnWB, lcSheet, loReturn
 		lcExcel = SYS(5) + ADDBS(SYS(2003)) + "NorthWindCustomers.xlsx"
-		thisform.clsVFPxWorkbookXLSX.SaveGridToWorkbookEx(thisform.Grid1, lcExcel, .T., "Customers")
+		*thisform.clsVFPxWorkbookXLSX.SaveGridToWorkbookEx(thisform.Grid1, lcExcel, .T., "Customers")
+		
+		lnWB = thisform.clsVFPxWorkbookXLSX.CreateWorkbook(lcExcel)
+		thisform.clsVFPxWorkbookXLSX.SaveGridToWorkbook(thisform.Grid1, lnWB, .T., .T., "Customers", .T., .T.)
 		
 		
 		*lnWB = thisform.clsVFPxWorkbookXLSX.OpenXLSXWorkbook(lcExcel)
@@ -323,6 +330,7 @@ DEFINE CLASS form1 AS form
 				.Resizable = .T.
 				.Alignment = 0
 				.ControlSource = "ALLTRIM(customers.companyname)"
+				.DynamicFontBold = "IIF(RECNO('customers')%2 = 0, .T., .F.)"
 				.Header1.Caption   = "Company Name"
 				.Header1.FontBold  = .T.
 				.Header1.Alignment = 0
@@ -369,6 +377,7 @@ DEFINE CLASS form1 AS form
 				.Header1.FontBold  = .T.
 				.Header1.Alignment = 0
 			ENDWITH
+			.SetAll("DynamicBackcolor", "IIF(RECNO('customers')%2 = 0, RGB(255,255,255), RGB(255,255,153))", "Column")
 		ENDWITH
 	ENDPROC
 

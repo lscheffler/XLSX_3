@@ -110,6 +110,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getdisplaygridlines		&& Gets the display grid line setting for the sheet
 		*m: getdwgpicdefinition		&& Gets the image drawing settings
 		*m: getformatkeyexpr		&& Gets the key expression for t_format
+		*m: getformatstyleid		&& Gets the format style Id for the given font and fill
 		*m: getgridcolumnformat		&& Gets the grid column format for the cell formatting
 		*m: getheaderfooterkeyexpr		&& Gets the key expression for the header footer table record
 		*m: getimagedimensions		&& Gets the image height and width dimensions
@@ -361,6 +362,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="getcolumnobject" type="method" display="GetColumnObject"/>
 		<memberdata name="getdisplaygridlines" type="method" display="GetDisplayGridLines"/>
 		<memberdata name="getdwgpicdefinition" type="method" display="GetDwgPicDefinition"/>
+		<memberdata name="getformatstyleid" type="method" display="GetFormatStyleId"/>
 		<memberdata name="getgridcolumnformat" type="method" display="GetGridColumnFormat"/>
 		<memberdata name="getimagedimensions" type="method" display="GetImageDimensions"/>
 		<memberdata name="getimagerelationshipid" type="method" display="GetImageRelationshipId"/>
@@ -1927,6 +1929,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		CREATE CURSOR xl_cellxfs (workbook I, id I, numFmtId I, fontId I, fillId I, borderId I, halign C(8), valign C(8), indent I, wraptext I, rotation I, celllocked I, cellhidden I)
 		INDEX ON BINTOC(workbook)+BINTOC(id) TAG id FOR !DELETED()
 		INDEX ON BINTOC(workbook)+PADL(id, 10, '0') TAG sortorder FOR !DELETED()
+		INDEX ON BINTOC(workbook)+BINTOC(numFmtId)+BINTOC(fontId)+BINTOC(fillId) TAG gridstyle FOR !DELETED()
 		INDEX ON BINTOC(workbook)+BINTOC(numFmtId)+BINTOC(fontId)+BINTOC(fillId)+BINTOC(borderId)+BINTOC(indent)+BINTOC(wraptext)+BINTOC(rotation)+ALLTRIM(halign)+ALLTRIM(valign) TAG cellxfs FOR !DELETED()
 		INDEX ON BINTOC(workbook)+BINTOC(fontId)+BINTOC(fillId)+BINTOC(borderId)+BINTOC(indent)+BINTOC(wraptext)+BINTOC(rotation)+ALLTRIM(halign)+ALLTRIM(valign) TAG cellformat FOR !DELETED()
 		INDEX ON BINTOC(workbook)+BINTOC(fontId)+BINTOC(fillId)+BINTOC(borderId)+BINTOC(indent)+BINTOC(wraptext)+BINTOC(rotation)+BINTOC(celllocked)+BINTOC(cellhidden)+ALLTRIM(halign)+ALLTRIM(valign) TAG cellprot FOR !DELETED()
@@ -3454,14 +3457,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROTECTED PROCEDURE GetCellXfsId		&& Returns the Cell XfsId value
-		LPARAMETERS tnWB, tnNumFmtId, tnFontId, tnFillId, tnBorderId, tcHAlign, tcVAlign, tnIndex, tnWrapText, tnRotation
+		LPARAMETERS tnWB, tnNumFmtId, tnFontId, tnFillId, tnBorderId, tcHAlign, tcVAlign, tnIndent, tnWrapText, tnRotation
 		LOCAL lnCellXfsId
-		IF SEEK(BINTOC(tnWB)+BINTOC(tnNumFmtId)+BINTOC(tnFontId)+BINTOC(tnFillId)+BINTOC(tnBorderId)+BINTOC(tnIndex)+BINTOC(tnWrapText)+BINTOC(tnRotation)+ALLTRIM(tcHAlign)+ALLTRIM(tcVAlign), "xl_cellxfs", "cellxfs")
+		IF SEEK(BINTOC(tnWB)+BINTOC(tnNumFmtId)+BINTOC(tnFontId)+BINTOC(tnFillId)+BINTOC(tnBorderId)+BINTOC(tnIndent)+BINTOC(tnWrapText)+BINTOC(tnRotation)+ALLTRIM(tcHAlign)+ALLTRIM(tcVAlign), "xl_cellxfs", "cellxfs")
 			lnCellXfsId = xl_cellxfs.id
 		ELSE
 			lnCellXfsId = this.GetNextId(tnWB, 0, 'xl_cellxfs')
 			INSERT INTO xl_cellxfs (workbook, id, numFmtId, fontId, fillId, borderId, halign, valign, indent, wraptext, rotation, celllocked, cellhidden) ;
-				VALUES (tnWB, lnCellXfsId, tnNumFmtId, tnFontId, tnFillId, tnBorderId, tcHAlign, tcVAlign, tnIndex, tnWrapText, tnRotation, 1, 0)
+				VALUES (tnWB, lnCellXfsId, tnNumFmtId, tnFontId, tnFillId, tnBorderId, tcHAlign, tcVAlign, tnIndent, tnWrapText, tnRotation, 1, 0)
 		ENDIF
 		RETURN lnCellXfsId
 	ENDPROC
@@ -3539,6 +3542,14 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ADDPROPERTY(loColumn, "FontSize", toGridColumn.FontSize)
 		ADDPROPERTY(loColumn, "BackColor", toGridColumn.BackColor)
 		ADDPROPERTY(loColumn, "ForeColor", toGridColumn.ForeColor)
+		ADDPROPERTY(loColumn, "DynamicProperties", False)                  && Indicates if any dynamic property is being used
+		ADDPROPERTY(loColumn, "DynamicAlignment", toGridColumn.DynamicAlignment)
+		ADDPROPERTY(loColumn, "DynamicFontBold", toGridColumn.DynamicFontBold)
+		ADDPROPERTY(loColumn, "DynamicFontItalic", toGridColumn.DynamicFontItalic)
+		ADDPROPERTY(loColumn, "DynamicFontName", toGridColumn.DynamicFontName)
+		ADDPROPERTY(loColumn, "DynamicFontSize", toGridColumn.DynamicFontSize)
+		ADDPROPERTY(loColumn, "DynamicBackColor", toGridColumn.DynamicBackColor)
+		ADDPROPERTY(loColumn, "DynamicForeColor", toGridColumn.DynamicForeColor)
 		ADDPROPERTY(loColumn, "HeaderCaption", toGridColumn.Header1.Caption)
 		ADDPROPERTY(loColumn, "HeaderFontBold", toGridColumn.Header1.FontBold)
 		ADDPROPERTY(loColumn, "HeaderFontItalic", toGridColumn.Header1.FontItalic)
@@ -3554,6 +3565,35 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		ADDPROPERTY(loColumn, "FieldDecPlaces", 0)
 		ADDPROPERTY(loColumn, "ValueStyleId", 0)                             && Format style Id for column values format
 		ADDPROPERTY(loColumn, "HeaderStyleId", 0)                            && Format style Id for column header format
+		
+		*-*	Set the column indicator if Dynamic properties are being used
+		IF !EMPTY(loColumn.DynamicAlignment)
+			loColumn.DynamicProperties = True
+		ELSE
+			IF !EMPTY(loColumn.DynamicFontBold)
+				loColumn.DynamicProperties = True
+			ELSE
+				IF !EMPTY(loColumn.DynamicFontItalic)
+					loColumn.DynamicProperties = True
+				ELSE
+					IF !EMPTY(loColumn.DynamicFontName)
+						loColumn.DynamicProperties = True
+					ELSE
+						IF !EMPTY(loColumn.DynamicFontSize)
+							loColumn.DynamicProperties = True
+						ELSE
+							IF !EMPTY(loColumn.DynamicBackColor)
+								loColumn.DynamicProperties = True
+							ELSE
+								IF !EMPTY(loColumn.DynamicForeColor)
+									loColumn.DynamicProperties = True
+								ENDIF
+							ENDIF
+						ENDIF
+					ENDIF
+				ENDIF
+			ENDIF
+		ENDIF
 		
 		lcFieldName = toGridColumn.ControlSource
 		lcFieldName = IIF('.' $ lcFieldName, GETWORDNUM(lcFieldName, 2, '.'), lcFieldName)
@@ -3707,6 +3747,85 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROTECTED PROCEDURE GetFormatKeyExpr		&& Gets the key expression for t_format
 		LPARAMETERS tnNbrFmtId, tnNumDec, tnFontId, tnFillId, tnBorderId, tcHAlign, tcVAlign, tlWordWrap
 		RETURN BINTOC(tnNbrFmtId)+BINTOC(tnNumDec)+BINTOC(tnFontId)+BINTOC(tnFillId)+BINTOC(tnBorderId)+tcHAlign+tcVAlign+TRANSFORM(tlWordWrap)
+	ENDPROC
+
+	PROCEDURE GetFormatStyleId		&& Gets the format style Id for the given font and fill
+		LPARAMETERS tnWB, tnNumFmtId, tnFillColor, tcFontName, tnFontSize, tlFontBold, tlFontItalic, tnFontColor, tcFontULine, tlFontStrikThr, tcFontVPos
+		LOCAL lnFontId, lnFillId
+		IF PCOUNT() < 3
+			RETURN -1
+		ENDIF
+		
+		*-*	Validate the font parameters
+		IF VARTYPE(tcFontName) != 'C' .OR. EMPTY(tcFontName)
+			tcFontName = 'Calibri'
+		ENDIF
+		tcFontName = PROPER(ALLTRIM(tcFontName))
+		IF VARTYPE(tnFontSize) != 'N' .OR. EMPTY(tnFontSize) .OR. tnFontSize < 0.5
+			tnFontSize = 11
+		ELSE
+			tnFontSize = INT(tnFontSize)
+		ENDIF
+		IF VARTYPE(tlFontBold) != 'L'
+			tlFontBold = False
+		ENDIF
+		IF VARTYPE(tlFontItalic) != 'L'
+			tlFontItalic = False
+		ENDIF
+		IF VARTYPE(tnFontColor) = 'N' .AND. BETWEEN(tnFontColor, 0, RGB(255, 255, 255))
+			tnFontColor = FLOOR(tnFontColor)
+		ELSE
+			tnFontColor = RGB(0, 0, 0)
+		ENDIF
+		IF VARTYPE(tlFontStrikThr) != 'L'
+			tlFontStrikThr = False
+		ENDIF
+		IF VARTYPE(tcFontULine) != 'C' .OR. !INLIST(tcFontULine, UNDERLINE_SINGLE, UNDERLINE_DOUBLE, UNDERLINE_SINGLEACCOUNTING, UNDERLINE_DOUBLEACCOUNTING, UNDERLINE_NONE)
+			tcFontULine = UNDERLINE_NONE
+		ENDIF
+		IF VARTYPE(tcFontVPos) != 'C' .OR. !INLIST(tcFontVPos, FONT_VERTICAL_BASELINE, FONT_VERTICAL_SUBSCRIPT, FONT_VERTICAL_SUPERSCRIPT)
+			tcFontVPos = FONT_VERTICAL_BASELINE
+		ENDIF
+		
+		*-*	Get the font record id
+		IF SEEK(BINTOC(tnWB)+PADR(tcFontName, 100) + STR(tnFontSize, 5, 1) + TRANSFORM(tlFontBold) + TRANSFORM(tlFontItalic) + PADL(tnFontColor, 15) + PADR(tcFontULine, 16) + ;
+				TRANSFORM(tlFontStrikThr) + PADR(tcFontVPos, 11), "xl_fonts", "cellformat")
+			lnFontId = xl_fonts.id
+		ELSE
+			lnFontId = this.GetNextId(tnWB, 0, 'xl_fonts')
+			INSERT INTO xl_fonts (workbook, id, fname, fsize, fbold, fitalic, fcolor, uline, strkthr, fvpos) ;
+				VALUES (tnWB, lnFontId, tcFontName, tnFontSize, tlFontBold, tlFontItalic, tnFontColor, tcFontULine, tlFontStrikThr, tcFontVPos)
+		ENDIF
+		
+		*-*	Validate the fill parameter
+		IF VARTYPE(tnFillColor) = 'N' .AND. BETWEEN(tnFillColor, 0, RGB(255, 255, 255))
+			tnFillColor = FLOOR(tnFillColor)
+		ELSE
+			tnFillColor = RGB(255, 255, 255)
+		ENDIF
+		
+		*-*	Get the fill record id
+		IF tnFillColor = RGB(255, 255, 255)
+			lnFillId = 0
+		ELSE
+			IF SEEK(BINTOC(tnWB)+BINTOC(tnFillColor)+BINTOC(tnFillColor)+FILL_STYLE_SOLID, "xl_fills", "fillcolor")
+				lnFillId = xl_fills.id
+			ELSE
+				lnFillId = this.GetNextId(tnWB, 0, 'xl_fills')
+				INSERT INTO xl_fills (workbook, id, fgcolor, bgcolor, patttype, theme, tint, fgindexed, bgindexed) ;
+					VALUES (tnWB, lnFillId, tnFillColor, tnFillColor, FILL_STYLE_SOLID, 0, 0, 0, 0)
+			ENDIF
+		ENDIF
+		
+		*-*	Get the style id
+		IF SEEK(BINTOC(tnWB)+BINTOC(tnNumFmtId)+BINTOC(lnFontId)+BINTOC(lnFillId), "xl_cellxfs", "gridstyle")
+			lnId = xl_cellxfs.id
+		ELSE
+			lnId = this.GetNextId(tnWB, 0, "xl_cellxfs")
+			INSERT INTO xl_cellxfs (workbook, id, numFmtId, fontId, fillId) ;
+				VALUES (tnWB, lnId, tnNumFmtId, lnFontId, lnFillId)
+		ENDIF
+		RETURN lnId
 	ENDPROC
 
 	PROTECTED PROCEDURE GetGridColumnFormat		&& Gets the grid column format for the cell formatting
@@ -7508,8 +7627,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		LPARAMETERS toGrid, txWB, tlFreeze, tlSaveWB, tcSheetName, tlInclHiddenCols, tlShowGridLines
 		LOCAL lcGridAlias, lnCol, lnWB, lnSh, lnRow, lcField, loReturn, loColumn, lnStyle, lnColCount, lnDefStyle
 		LOCAL lnDataRow, loFontInfo, lcDataType, lcCol, lnCellStyle, loGrid, lnFldCnt, lnCustId
-		LOCAL lnXfsId, lnBegRow, lxCellValue
-		LOCAL ARRAY laRowCount[1], laColOrder[1]
+		LOCAL lnXfsId, lnBegRow, lxCellValue, lcFontName, lnFontSize, llFontBold, llFontItalic, loException
+		LOCAL lnCellXfsId, lnNumFmtsId, lnFontColor, lcFontUnderLine, llFontStrikeThru, lnFillColor
+		LOCAL ARRAY laRowCount[1], laColOrder[1], laTblFields[1]
 		loReturn = CREATEOBJECT("Empty")
 		ADDPROPERTY(loReturn, "Workbook",  0)
 		ADDPROPERTY(loReturn, "Sheet", 0)
@@ -7544,6 +7664,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			CASE PCOUNT() = 5
 				tlInclHiddenCols = True
 				tlShowGridLines  = IIF(toGrid.GridLines=0, False, True)
+				tlDynamicProperties = False
 		
 			CASE PCOUNT() = 6
 				tlShowGridLines  = IIF(toGrid.GridLines=0, False, True)
@@ -7660,7 +7781,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 				ENDIF
 				lnDataRow = lnRow + 1
 		
-		*-*		Add the cell data values
+		*-*		Add the cell data values and cell formatting
 				SELECT &lcGridAlias
 				lnBegRow = lnRow
 				SCAN
@@ -7669,12 +7790,83 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					FOR lnCol=1 TO lnColCount
 						loColumn = toGrid.Columns(laColOrder[lnCol, 2])
 						lcField  = loColumn.ControlSource
-						lxCellValue = &lcField
+						lxCellValue = EVALUATE(lcField)
 						IF loGrid.Columns(laColOrder[lnCol, 2]).FieldPercent
 							lxCellValue = lxCellValue / 100
 						ENDIF
 						this.SetCellValue(lnWB, lnSh, lnRow, lnCol, lxCellValue)
-						this.SetCellStyle(lnWB, lnSh, lnRow, lnCol, loGrid.Columns(laColOrder[lnCol, 2]).ValueStyleId)
+		
+						IF loGrid.Columns(laColOrder[lnCol, 2]).DynamicProperties
+							TRY
+								lnFontColor = EVALUATE(loColumn.DynamicForeColor)
+								IF !VARTYPE(lnFontColor) = "N"
+									lnFontColor = loColumn.ForeColor
+								ENDIF
+							CATCH TO loException
+								lnFontColor = loColumn.ForeColor
+							ENDTRY
+							TRY
+								lcFontName = EVALUATE(loColumn.DynamicFontName)
+								IF !VARTYPE(lcFontName) = "C"
+									lcFontName = loColumn.FontName
+								ENDIF
+							CATCH TO loException
+								lcFontName = loColumn.FontName
+							ENDTRY
+							TRY
+								lnFontSize = EVALUATE(loColumn.DynamicFontSize)
+								IF !VARTYPE(lnFontSize) = "N"
+									lnFontSize = loColumn.FontSize
+								ENDIF
+							CATCH TO loException
+								lnFontSize = loColumn.FontSize
+							ENDTRY
+							TRY
+								llFontBold = EVALUATE(loColumn.DynamicFontBold)
+								IF !VARTYPE(llFontBold) = "L"
+									llFontBold = loColumn.FontBold
+								ENDIF
+							CATCH TO loException
+								llFontBold = loColumn.FontBold
+							ENDTRY
+							TRY
+								llFontItalic = EVALUATE(loColumn.DynamicFontItalic)
+								IF !VARTYPE(llFontItalic) = "L"
+									llFontItalic = loColumn.FontItalic
+								ENDIF
+							CATCH TO loException
+								llFontItalic = loColumn.FontItalic
+							ENDTRY
+							TRY
+								lcFontUnderLine = EVALUATE(loColumn.DynamicFontUnderLine)
+								IF !VARTYPE(lcFontUnderLine) = "L"
+									lcFontUnderLine = loColumn.FontUnderLine
+								ENDIF
+							CATCH TO loException
+								lcFontUnderLine = loColumn.FontUnderLine
+							ENDTRY
+							TRY
+								llFontStrikeThru = EVALUATE(loColumn.DynamicFontStrikeThru)
+								IF !VARTYPE(llFontStrikeThru) = "L"
+									llFontStrikeThru = loColumn.FontStrikeThru
+								ENDIF
+							CATCH TO loException
+								llFontStrikeThru = loColumn.FontStrikeThru
+							ENDTRY
+							TRY
+								lnFillColor = EVALUATE(loColumn.DynamicBackColor)
+								IF VARTYPE(lnFillColor) != 'N'
+									lnFillColor = RGB(255,255,255)
+								ENDIF
+							CATCH TO loException
+								lnFillColor = RGB(255,255,255)
+							ENDTRY
+							lnCellXfsId = this.GetFormatStyleId(lnWB, loGrid.Columns(laColOrder[lnCol, 2]).NumFmtsIndex, lnFillColor, lcFontName, lnFontSize, llFontBold, ;
+																llFontItalic, lnFontColor, lcFontUnderLine, llFontStrikeThru, FONT_VERTICAL_BASELINE)
+						ELSE
+							lnCellXfsId = loGrid.Columns(laColOrder[lnCol, 2]).ValueStyleId
+						ENDIF
+						this.SetCellStyle(lnWB, lnSh, lnRow, lnCol, lnCellXfsId)
 					ENDFOR
 				ENDSCAN
 		
@@ -9831,6 +10023,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		lcHorzAlign = ""
 		lnNumFmtId  = 0
 		DO CASE
+			CASE ISNULL(txCellValue)
+				RETURN False
+		
 			CASE VARTYPE(txCellValue) = DATA_TYPE_LOGICAL
 				lcDataType  = DATA_TYPE_LOGICAL
 				lcCellValue = "StringValue"
