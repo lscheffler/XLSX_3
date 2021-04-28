@@ -110,7 +110,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getdisplaygridlines		&& Gets the display grid line setting for the sheet
 		*m: getdwgpicdefinition		&& Gets the image drawing settings
 		*m: getformatkeyexpr		&& Gets the key expression for t_format
-		*m: getformatstyleid		&& Gets the format style Id for the given font and fill
 		*m: getgridcolumnformat		&& Gets the grid column format for the cell formatting
 		*m: getheaderfooterkeyexpr		&& Gets the key expression for the header footer table record
 		*m: getimagedimensions		&& Gets the image height and width dimensions
@@ -142,6 +141,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getsheetscale		&& Gets the sheet printing scale
 		*m: getstringrecord		&& Positions the record pointer to the selected string record
 		*m: getstringxml		&& Returns a converted string from XML to text
+		*m: getstyleformatid		&& Gets the format style Id for the given numeric format, font format, and fill format
 		*m: gettargetfromrelationships		&& Gets the target (file name) for the relationship id from the passed relationships file
 		*m: getvalidation		&& Returns the validation definition
 		*m: getvalidationlist		&& Returns a list of validations for the workbook/sheet
@@ -362,7 +362,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="getcolumnobject" type="method" display="GetColumnObject"/>
 		<memberdata name="getdisplaygridlines" type="method" display="GetDisplayGridLines"/>
 		<memberdata name="getdwgpicdefinition" type="method" display="GetDwgPicDefinition"/>
-		<memberdata name="getformatstyleid" type="method" display="GetFormatStyleId"/>
 		<memberdata name="getgridcolumnformat" type="method" display="GetGridColumnFormat"/>
 		<memberdata name="getimagedimensions" type="method" display="GetImageDimensions"/>
 		<memberdata name="getimagerelationshipid" type="method" display="GetImageRelationshipId"/>
@@ -370,6 +369,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="getsheetindex" type="method" display="GetSheetIndex"/>
 		<memberdata name="getsheetprotection" type="method" display="GetSheetProtection"/>
 		<memberdata name="getstringrecord" type="method" display="GetStringRecord"/>
+		<memberdata name="getstyleformatid" type="method" display="GetStyleFormatId"/>
 		<memberdata name="gettargetfromrelationships" type="method" display="GetTargetFromRelationships"/>
 		<memberdata name="getworkbookprotection" type="method" display="GetWorkbookProtection"/>
 		<memberdata name="getxmlfirstsegment" type="method" display="GetXMLFirstSegment"/>
@@ -3749,85 +3749,6 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		RETURN BINTOC(tnNbrFmtId)+BINTOC(tnNumDec)+BINTOC(tnFontId)+BINTOC(tnFillId)+BINTOC(tnBorderId)+tcHAlign+tcVAlign+TRANSFORM(tlWordWrap)
 	ENDPROC
 
-	PROCEDURE GetFormatStyleId		&& Gets the format style Id for the given font and fill
-		LPARAMETERS tnWB, tnNumFmtId, tnFillColor, tcFontName, tnFontSize, tlFontBold, tlFontItalic, tnFontColor, tcFontULine, tlFontStrikThr, tcFontVPos
-		LOCAL lnFontId, lnFillId
-		IF PCOUNT() < 3
-			RETURN -1
-		ENDIF
-		
-		*-*	Validate the font parameters
-		IF VARTYPE(tcFontName) != 'C' .OR. EMPTY(tcFontName)
-			tcFontName = 'Calibri'
-		ENDIF
-		tcFontName = PROPER(ALLTRIM(tcFontName))
-		IF VARTYPE(tnFontSize) != 'N' .OR. EMPTY(tnFontSize) .OR. tnFontSize < 0.5
-			tnFontSize = 11
-		ELSE
-			tnFontSize = INT(tnFontSize)
-		ENDIF
-		IF VARTYPE(tlFontBold) != 'L'
-			tlFontBold = False
-		ENDIF
-		IF VARTYPE(tlFontItalic) != 'L'
-			tlFontItalic = False
-		ENDIF
-		IF VARTYPE(tnFontColor) = 'N' .AND. BETWEEN(tnFontColor, 0, RGB(255, 255, 255))
-			tnFontColor = FLOOR(tnFontColor)
-		ELSE
-			tnFontColor = RGB(0, 0, 0)
-		ENDIF
-		IF VARTYPE(tlFontStrikThr) != 'L'
-			tlFontStrikThr = False
-		ENDIF
-		IF VARTYPE(tcFontULine) != 'C' .OR. !INLIST(tcFontULine, UNDERLINE_SINGLE, UNDERLINE_DOUBLE, UNDERLINE_SINGLEACCOUNTING, UNDERLINE_DOUBLEACCOUNTING, UNDERLINE_NONE)
-			tcFontULine = UNDERLINE_NONE
-		ENDIF
-		IF VARTYPE(tcFontVPos) != 'C' .OR. !INLIST(tcFontVPos, FONT_VERTICAL_BASELINE, FONT_VERTICAL_SUBSCRIPT, FONT_VERTICAL_SUPERSCRIPT)
-			tcFontVPos = FONT_VERTICAL_BASELINE
-		ENDIF
-		
-		*-*	Get the font record id
-		IF SEEK(BINTOC(tnWB)+PADR(tcFontName, 100) + STR(tnFontSize, 5, 1) + TRANSFORM(tlFontBold) + TRANSFORM(tlFontItalic) + PADL(tnFontColor, 15) + PADR(tcFontULine, 16) + ;
-				TRANSFORM(tlFontStrikThr) + PADR(tcFontVPos, 11), "xl_fonts", "cellformat")
-			lnFontId = xl_fonts.id
-		ELSE
-			lnFontId = this.GetNextId(tnWB, 0, 'xl_fonts')
-			INSERT INTO xl_fonts (workbook, id, fname, fsize, fbold, fitalic, fcolor, uline, strkthr, fvpos) ;
-				VALUES (tnWB, lnFontId, tcFontName, tnFontSize, tlFontBold, tlFontItalic, tnFontColor, tcFontULine, tlFontStrikThr, tcFontVPos)
-		ENDIF
-		
-		*-*	Validate the fill parameter
-		IF VARTYPE(tnFillColor) = 'N' .AND. BETWEEN(tnFillColor, 0, RGB(255, 255, 255))
-			tnFillColor = FLOOR(tnFillColor)
-		ELSE
-			tnFillColor = RGB(255, 255, 255)
-		ENDIF
-		
-		*-*	Get the fill record id
-		IF tnFillColor = RGB(255, 255, 255)
-			lnFillId = 0
-		ELSE
-			IF SEEK(BINTOC(tnWB)+BINTOC(tnFillColor)+BINTOC(tnFillColor)+FILL_STYLE_SOLID, "xl_fills", "fillcolor")
-				lnFillId = xl_fills.id
-			ELSE
-				lnFillId = this.GetNextId(tnWB, 0, 'xl_fills')
-				INSERT INTO xl_fills (workbook, id, fgcolor, bgcolor, patttype, theme, tint, fgindexed, bgindexed) ;
-					VALUES (tnWB, lnFillId, tnFillColor, tnFillColor, FILL_STYLE_SOLID, 0, 0, 0, 0)
-			ENDIF
-		ENDIF
-		
-		*-*	Get the style id
-		IF SEEK(BINTOC(tnWB)+BINTOC(tnNumFmtId)+BINTOC(lnFontId)+BINTOC(lnFillId), "xl_cellxfs", "gridstyle")
-			lnId = xl_cellxfs.id
-		ELSE
-			lnId = this.GetNextId(tnWB, 0, "xl_cellxfs")
-			INSERT INTO xl_cellxfs (workbook, id, numFmtId, fontId, fillId) ;
-				VALUES (tnWB, lnId, tnNumFmtId, lnFontId, lnFillId)
-		ENDIF
-		RETURN lnId
-	ENDPROC
-
 	PROTECTED PROCEDURE GetGridColumnFormat		&& Gets the grid column format for the cell formatting
 		LPARAMETER toColumn, tnNumFmtsId, tnWB
 		LOCAL lnNumFlds, lcFormatCode, lcInputMask, lcWholePart, lcDecPart, lnLenWholePart, lnLenDecPart, lcNonNumeric
@@ -4826,6 +4747,85 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			SET STEP ON
 		ENDTRY
 		RETURN lcString
+	ENDPROC
+
+	PROCEDURE GetStyleFormatId		&& Gets the format style Id for the given numeric format, font format, and fill format
+		LPARAMETERS tnWB, tnNumFmtId, tnFillColor, tcFontName, tnFontSize, tlFontBold, tlFontItalic, tnFontColor, tcFontULine, tlFontStrikThr, tcFontVPos
+		LOCAL lnFontId, lnFillId
+		IF PCOUNT() < 3
+			RETURN -1
+		ENDIF
+		
+		*-*	Validate the font parameters
+		IF VARTYPE(tcFontName) != 'C' .OR. EMPTY(tcFontName)
+			tcFontName = 'Calibri'
+		ENDIF
+		tcFontName = PROPER(ALLTRIM(tcFontName))
+		IF VARTYPE(tnFontSize) != 'N' .OR. EMPTY(tnFontSize) .OR. tnFontSize < 0.5
+			tnFontSize = 11
+		ELSE
+			tnFontSize = INT(tnFontSize)
+		ENDIF
+		IF VARTYPE(tlFontBold) != 'L'
+			tlFontBold = False
+		ENDIF
+		IF VARTYPE(tlFontItalic) != 'L'
+			tlFontItalic = False
+		ENDIF
+		IF VARTYPE(tnFontColor) = 'N' .AND. BETWEEN(tnFontColor, 0, RGB(255, 255, 255))
+			tnFontColor = FLOOR(tnFontColor)
+		ELSE
+			tnFontColor = RGB(0, 0, 0)
+		ENDIF
+		IF VARTYPE(tlFontStrikThr) != 'L'
+			tlFontStrikThr = False
+		ENDIF
+		IF VARTYPE(tcFontULine) != 'C' .OR. !INLIST(tcFontULine, UNDERLINE_SINGLE, UNDERLINE_DOUBLE, UNDERLINE_SINGLEACCOUNTING, UNDERLINE_DOUBLEACCOUNTING, UNDERLINE_NONE)
+			tcFontULine = UNDERLINE_NONE
+		ENDIF
+		IF VARTYPE(tcFontVPos) != 'C' .OR. !INLIST(tcFontVPos, FONT_VERTICAL_BASELINE, FONT_VERTICAL_SUBSCRIPT, FONT_VERTICAL_SUPERSCRIPT)
+			tcFontVPos = FONT_VERTICAL_BASELINE
+		ENDIF
+		
+		*-*	Get the font record id
+		IF SEEK(BINTOC(tnWB)+PADR(tcFontName, 100) + STR(tnFontSize, 5, 1) + TRANSFORM(tlFontBold) + TRANSFORM(tlFontItalic) + PADL(tnFontColor, 15) + PADR(tcFontULine, 16) + ;
+				TRANSFORM(tlFontStrikThr) + PADR(tcFontVPos, 11), "xl_fonts", "cellformat")
+			lnFontId = xl_fonts.id
+		ELSE
+			lnFontId = this.GetNextId(tnWB, 0, 'xl_fonts')
+			INSERT INTO xl_fonts (workbook, id, fname, fsize, fbold, fitalic, fcolor, uline, strkthr, fvpos) ;
+				VALUES (tnWB, lnFontId, tcFontName, tnFontSize, tlFontBold, tlFontItalic, tnFontColor, tcFontULine, tlFontStrikThr, tcFontVPos)
+		ENDIF
+		
+		*-*	Validate the fill parameter
+		IF VARTYPE(tnFillColor) = 'N' .AND. BETWEEN(tnFillColor, 0, RGB(255, 255, 255))
+			tnFillColor = FLOOR(tnFillColor)
+		ELSE
+			tnFillColor = RGB(255, 255, 255)
+		ENDIF
+		
+		*-*	Get the fill record id
+		IF tnFillColor = RGB(255, 255, 255)
+			lnFillId = 0
+		ELSE
+			IF SEEK(BINTOC(tnWB)+BINTOC(tnFillColor)+BINTOC(tnFillColor)+FILL_STYLE_SOLID, "xl_fills", "fillcolor")
+				lnFillId = xl_fills.id
+			ELSE
+				lnFillId = this.GetNextId(tnWB, 0, 'xl_fills')
+				INSERT INTO xl_fills (workbook, id, fgcolor, bgcolor, patttype, theme, tint, fgindexed, bgindexed) ;
+					VALUES (tnWB, lnFillId, tnFillColor, tnFillColor, FILL_STYLE_SOLID, 0, 0, 0, 0)
+			ENDIF
+		ENDIF
+		
+		*-*	Get the style id
+		IF SEEK(BINTOC(tnWB)+BINTOC(tnNumFmtId)+BINTOC(lnFontId)+BINTOC(lnFillId), "xl_cellxfs", "gridstyle")
+			lnId = xl_cellxfs.id
+		ELSE
+			lnId = this.GetNextId(tnWB, 0, "xl_cellxfs")
+			INSERT INTO xl_cellxfs (workbook, id, numFmtId, fontId, fillId) ;
+				VALUES (tnWB, lnId, tnNumFmtId, lnFontId, lnFillId)
+		ENDIF
+		RETURN lnId
 	ENDPROC
 
 	PROTECTED PROCEDURE GetTargetFromRelationships		&& Gets the target (file name) for the relationship id from the passed relationships file
@@ -7861,7 +7861,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 							CATCH TO loException
 								lnFillColor = RGB(255,255,255)
 							ENDTRY
-							lnCellXfsId = this.GetFormatStyleId(lnWB, loGrid.Columns(laColOrder[lnCol, 2]).NumFmtsIndex, lnFillColor, lcFontName, lnFontSize, llFontBold, ;
+							lnCellXfsId = this.GetStyleFormatId(lnWB, loGrid.Columns(laColOrder[lnCol, 2]).NumFmtsIndex, lnFillColor, lcFontName, lnFontSize, llFontBold, ;
 																llFontItalic, lnFontColor, lcFontUnderLine, llFontStrikeThru, FONT_VERTICAL_BASELINE)
 						ELSE
 							lnCellXfsId = loGrid.Columns(laColOrder[lnCol, 2]).ValueStyleId
@@ -8138,11 +8138,13 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDTRY
 					IF ISNULL(lxCellValue)
 						lxCellValue = this.NullValue
+					ELSE
+						loGrid.Columns(lnCol).FieldType = VARTYPE(lxCellValue)     && Correction provided by vadpost on VFPx to handle calculated field values
 					ENDIF
 					DO CASE
 						CASE ISNULL(lxCellValue) .OR. EMPTY(lxCellValue)      && Apply formatting to cell only
 							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '"></c>')
-					
+		
 						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_DATE
 							IF lxCellValue >= DATE(1900, 1, 1)
 								lxCellValue = TRANSFORM(INT(lxCellValue - DATE(1900, 1, 1) + 2))
@@ -8154,7 +8156,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 								FWRITE(lhFile, '<is><t>' + this.GetXMLString(lxCellValue) + '</t></is>')
 								FWRITE(lhFile, '</c>')
 							ENDIF
-					
+		
 						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_DATETIME
 							IF TTOD(lxCellValue) >= DATE(1900, 1, 1)
 								lnSetDecimals = SET("DECIMALS")
@@ -8171,26 +8173,26 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 								FWRITE(lhFile, '<is><t>' + this.GetXMLString(lxCellValue) + '</t></is>')
 								FWRITE(lhFile, '</c>')
 							ENDIF
-					
+		
 						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_LOGICAL
 							lxCellValue = IIF(lxCellValue, GETWORDNUM(this.TrueFalseValue, 1, "|"), GETWORDNUM(this.TrueFalseValue, 2, "|"))
 							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="inlineStr">')
 							FWRITE(lhFile, '<is><t>' + this.GetXMLString(lxCellValue) + '</t></is>')
 							FWRITE(lhFile, '</c>')
-					
+		
 						CASE loGrid.Columns(lnCol).FieldType = FIELD_TYPE_CURRENCY
 							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="n">')
 							FWRITE(lhFile, '<v>' + TRANSFORM(MTON(lxCellValue)) + '</v></c>')
-					
+		
 						CASE INLIST(loGrid.Columns(lnCol).FieldType, FIELD_TYPE_CHAR, FIELD_TYPE_VCHAR, FIELD_TYPE_MEMO)
 							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="inlineStr">')
 							FWRITE(lhFile, '<is><t>' + this.GetXMLString(ALLTRIM(lxCellValue)) + '</t></is>')
 							FWRITE(lhFile, '</c>')
-					
+		
 						CASE INLIST(loGrid.Columns(lnCol).FieldType, FIELD_TYPE_INT, FIELD_TYPE_FLOAT, FIELD_TYPE_NUMERIC, FIELD_TYPE_DOUBLE)
 							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" s="' + TRANSFORM(lnFmtId) + '" t="n">')
 							FWRITE(lhFile, '<v>' + TRANSFORM(lxCellValue) + '</v></c>')
-					
+		
 						OTHERWISE
 							FWRITE(lhFile, '<c r="' + this.ColumnIndexToAscii(lnCol) + TRANSFORM(lnRow) + '" t="inlineStr">')
 							FWRITE(lhFile, '<is><t>Unsupported Field Type</t></is></c>')
@@ -10022,6 +10024,9 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		lnStringNdx = 0
 		lcHorzAlign = ""
 		lnNumFmtId  = 0
+		IF ISNULL(txCellValue)
+			txCellValue = this.NullValue
+		ENDIF
 		DO CASE
 			CASE ISNULL(txCellValue)
 				RETURN False
