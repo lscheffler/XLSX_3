@@ -5488,8 +5488,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROTECTED PROCEDURE IsCellReferenceInvalid		&& Checks if the cell reference is invalid (outside of limits)
-		LPARAMETERS tnRow, tnCol
-		IF tnRow > LIMITS_MAX_ROWS .OR. tnCol > LIMITS_MAX_COLUMNS
+		LPARAMETERS tnCellRow, tnCellCol
+		IF tnCellRow <= 0 .OR. tnCellCol <= 0
+			RETURN True
+		ENDIF
+		IF tnCellRow > LIMITS_MAX_ROWS .OR. tnCellCol > LIMITS_MAX_COLUMNS
 			RETURN True
 		ENDIF
 		RETURN False
@@ -8864,7 +8867,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	PROCEDURE SaveWorkbook		&& Saves the selected workbook as an XLSX file
 		LPARAMETERS tnWB
 		LOCAL lcTempPath, llReturn, lcSafety, lnTotStages, lcRelsFileName, loException, lcFileName, lcBaseContentType, lcWbXmlPath
-		LOCAL lcExtnFileName, lcFileContent, lcBaseType, lnStage, lcExact, lhWBRels, lhCTFile
+		LOCAL lcExtnFileName, lcFileContent, lcBaseType, lnStage, lcExact, lhWBRels, lhCTFile, lnTotStrCnt, lnUnqStrCnt
 		LOCAL ARRAY laCount[1]
 		llReturn = False
 		loException = .NULL.
@@ -8893,7 +8896,27 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					IF !this.WriteSupportXMLs(tnWB, lcTempPath)
 						THROW
 					ENDIF
-			
+		
+		*-*			Get the number of unique strings assigned and total strings assigned
+					SELECT xl_strformat
+					SET ORDER TO TAG sortorder
+					COUNT FOR workbook = tnWB .AND. !DELETED() TO lnTotStrCnt
+				
+					SELECT xl_strings
+					SET ORDER TO TAG sortorder
+					COUNT FOR workbook = tnWB .AND. !DELETED() TO lnUnqStrCnt
+					lnTotStrCnt = lnTotStrCnt + lnUnqStrCnt
+		
+					SELECT xl_strings
+					SET ORDER TO TAG sortorder
+					COUNT FOR workbook = tnWB .AND. !DELETED() TO lnUnqStrCnt
+					lnTotStrCnt = lnTotStrCnt + lnUnqStrCnt
+		
+		*-*			If no strings are assigned to cells; remove SharedStrings.xml from relationships
+					IF lnTotStrCnt = 0
+						DELETE FROM xl_relationships WHERE workbook = tnWB AND reltype = RELS_TYPE_SHAREDSTRINGS
+					ENDIF
+		
 		*-*			Write the contents type xml
 					lnStage = lnStage + 1
 					RAISEEVENT(this, "OnShowStatusMessage", lnStage, lnTotStages)
@@ -8904,18 +8927,18 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDIF
 					FWRITE(lhCTFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
 					FWRITE(lhCTFile, '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">')
-					
+		
 					SELECT xl_contenttypes
 					SCAN FOR workbook = tnWB .AND. !DELETED()
 						FWRITE(lhCTFile, '<Default Extension="' + ALLTRIM(xl_contenttypes.extension) + '" ContentType="' + ALLTRIM(xl_contenttypes.contenttype) + '"/>')
 					ENDSCAN
-				
+		
 					IF xl_workbooks.macroenabled
 						FWRITE(lhCTFile, '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.ms-excel.sheet.macroEnabled.main+xml"/>')
 					ELSE
 						FWRITE(lhCTFile, '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>')
 					ENDIF
-				
+		
 					lcBaseContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.'
 					SELECT xl_relationships
 					SCAN FOR workbook = tnWB .AND. !DELETED()
@@ -8923,36 +8946,36 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 							CASE xl_relationships.reltype = RELS_TYPE_CALCCHAIN
 		*						FWRITE(lhCTFile, '<Override PartName="/xl/calcChain.xml"')
 		*						FWRITE(lhCTFile, ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/>')
-				
+		
 							CASE xl_relationships.reltype = RELS_TYPE_DRAWING
 								FWRITE(lhCTFile, '<Override PartName="/xl/drawings/drawing' + TRANSFORM(xl_relationships.sheet) + '.xml"')
 								FWRITE(lhCTFile, ' ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>')
-				
+		
 							CASE xl_relationships.reltype = RELS_TYPE_EXTNLINK
 								FWRITE(lhCTFile, '<Override PartName="/xl/externalLinks/externalLink1.xml"')
 								FWRITE(lhCTFile, ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml"/>')
-				
+		
 							CASE xl_relationships.reltype = RELS_TYPE_SHAREDSTRINGS
 								FWRITE(lhCTFile, '<Override PartName="/xl/sharedStrings.xml"')
 								FWRITE(lhCTFile, ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>')
-				
+		
 							CASE xl_relationships.reltype = RELS_TYPE_STYLES
 								FWRITE(lhCTFile, '<Override PartName="/xl/styles.xml"')
 								FWRITE(lhCTFile, ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>')
-				
+		
 							CASE xl_relationships.reltype = RELS_TYPE_THEME
 								FWRITE(lhCTFile, '<Override PartName="/xl/theme/theme1.xml"')
 								FWRITE(lhCTFile, ' ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>')
-				
+		
 							CASE xl_relationships.reltype = RELS_TYPE_WORKSHEET
 								FWRITE(lhCTFile,  '<Override PartName="/xl/worksheets/sheet' + TRANSFORM(xl_relationships.sheet) + '.xml"')
 								FWRITE(lhCTFile, ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
 						ENDCASE
 					ENDSCAN
-				
+		
 					FWRITE(lhCTFile, '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>')
 					FWRITE(lhCTFile, '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>')
-				
+		
 					FWRITE(lhCTFile, '</Types>')
 					FCLOSE(lhCTFile)
 					this.SaveAsUTF8(lcFileName)
@@ -8967,7 +8990,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 					ENDIF
 					lcWbXmlPath = lcTempPath + "xl\"
 					lcBaseType  = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
-					
+		
 					FWRITE(lhWBRels, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>')
 					FWRITE(lhWBRels, '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">')
 		
@@ -8981,7 +9004,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 								lcExtnFileName = lcWbXmlPath + ALLTRIM(xl_relationships.target)
 								lcFileContent  = ALLTRIM(xl_relationships.filecontent)
 								this.ConvertStringToFile(lcFileContent, lcExtnFileName)
-					
+		
 							CASE xl_relationships.reltype = RELS_TYPE_EXTNLINK
 								lcExtnFileName = lcWbXmlPath + ALLTRIM(xl_relationships.target)
 								lcFileContent  = ALLTRIM(xl_relationships.filecontent)
@@ -9013,7 +9036,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 								ENDIF
 		
 							CASE xl_relationships.reltype = RELS_TYPE_SHAREDSTRINGS
-								IF !this.WriteStringsXML(tnWB, lcTempPath)
+								IF !this.WriteStringsXML(tnWB, lcTempPath, lnTotStrCnt, lnUnqStrCnt)
 									THROW
 								ENDIF
 		
@@ -9023,22 +9046,16 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 								ENDIF
 						ENDCASE
 					ENDSCAN
-					
 					FWRITE(lhWBRels, '</Relationships>')
+					FCLOSE(lhWBRels)
+					this.SaveAsUTF8(lcRelsFileName)
+		
+					llReturn = this.CreateExcelFile(lcTempPath, xl_workbooks.filepath, xl_workbooks.wbname, xl_workbooks.macroenabled)
 		
 				CATCH TO loException
 					llReturn = False
 					SET STEP ON
-		
-				FINALLY
-					IF ISNULL(loException)
-						FCLOSE(lhWBRels)
-						this.SaveAsUTF8(lcRelsFileName)
-					ENDIF
 				ENDTRY
-				IF ISNULL(loException)
-					llReturn = this.CreateExcelFile(lcTempPath, xl_workbooks.filepath, xl_workbooks.wbname, xl_workbooks.macroenabled)
-				ENDIF
 				this.RemoveWorkingDirectories(lcTempPath)
 				this.RestoreVFPSettings()
 				RAISEEVENT(this, "OnShowStatusMessage", 2, -1)
@@ -12497,106 +12514,85 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 	ENDPROC
 
 	PROTECTED PROCEDURE WriteStringsXML		&& Writes the sharedStrings XML
-		LPARAMETERS tnWB, tcPath
-		LOCAL lcFileName, lhFile, lnTotCount, lnUniqueCnt, loException, llSuccess, lnRelId
+		LPARAMETERS tnWB, tcPath, tnTotStrCnt, tnUnqStrCnt
+		LOCAL lcFileName, lhFile, loException, llSuccess, lnRelId
 		RAISEEVENT(this, "OnShowStatusMessage", 2, 2)
 		TRY
-			SELECT xl_strformat
-			SET ORDER TO TAG sortorder
-			COUNT FOR workbook = tnWB .AND. !DELETED() TO lnTotCount
+		*-*	Output the file		
+			lcFileName = tcPath + "xl\sharedStrings.xml"
+			lhFile = FCREATE(lcFileName)
+			IF lhFile < 0
+				THROW
+			ENDIF
+		
+			FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + LF)
+			FWRITE(lhFile, '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + TRANSFORM(tnTotStrCnt) + '" uniqueCount="' + TRANSFORM(tnUnqStrCnt) + '">')   && Change 19Jun2018: missplaced >
 		
 			SELECT xl_strings
-			SET ORDER TO TAG sortorder
-			COUNT FOR workbook = tnWB .AND. !DELETED() TO lnUniqueCnt
-			lnTotCount = lnTotCount + lnUniqueCnt
+			SCAN FOR workbook = tnWB .AND. !DELETED()
+				IF xl_strings.formatted
+					FWRITE(lhFile, '<si>')
+					SELECT xl_strformat
+					SCAN FOR workbook = tnWB .AND. id = xl_strings.id .AND. !DELETED()
+						FWRITE(lhFile, '<r>')
+						IF xl_strformat.fbold .OR. xl_strformat.fitalic .OR. xl_strformat.fcolor>0 .OR. !EMPTY(xl_strformat.fname) .OR. xl_strformat.fsize>0 ;
+								.OR. xl_strformat.strkthr .OR. !EMPTY(xl_strformat.fvpos) .OR. xl_strformat.theme>0 .OR. xl_strformat.indexed>0 .OR. xl_strformat.uline != UNDERLINE_NONE
 		
-			IF lnUniqueCnt > 0
-		*-*		If the shared strings xml has not been defined in the relationships, add it
-				IF !SEEK(BINTOC(tnWB)+BINTOC(0)+RELS_TYPE_SHAREDSTRINGS, "xl_relationships", "reltype")
-					lnRelId = this.GetNextId(tnWB, 0, "xl_workbook_rels")
-					INSERT INTO xl_relationships (workbook, sheet, relsrc, relid, reltype, target) ;
-						VALUES (tnWB, 0, RELS_SRC_WORKBOOK, lnRelId, RELS_TYPE_SHAREDSTRINGS, "sharedStrings.xml")
-				ENDIF
-		
-		*-*		Output the file		
-				lcFileName = tcPath + "xl\sharedStrings.xml"
-				lhFile = FCREATE(lcFileName)
-				IF lhFile < 0
-					THROW
-				ENDIF
-			
-				FWRITE(lhFile, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + LF)
-				FWRITE(lhFile, '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + TRANSFORM(lnTotCount) + '" uniqueCount="' + TRANSFORM(lnUniqueCnt) + '">')   && Change 19Jun2018: missplaced >
-		
-				SELECT xl_strings
-				SCAN FOR workbook = tnWB .AND. !DELETED()
-					IF xl_strings.formatted
-						FWRITE(lhFile, '<si>')
-						SELECT xl_strformat
-						SCAN FOR workbook = tnWB .AND. id = xl_strings.id .AND. !DELETED()
-							FWRITE(lhFile, '<r>')
-							IF xl_strformat.fbold .OR. xl_strformat.fitalic .OR. xl_strformat.fcolor>0 .OR. !EMPTY(xl_strformat.fname) .OR. xl_strformat.fsize>0 ;
-									.OR. xl_strformat.strkthr .OR. !EMPTY(xl_strformat.fvpos) .OR. xl_strformat.theme>0 .OR. xl_strformat.indexed>0 .OR. xl_strformat.uline != UNDERLINE_NONE
-			
-								FWRITE(lhFile, '<rPr>')
-								IF xl_strformat.fbold
-									FWRITE(lhFile, '<b/>')
-								ENDIF
-								IF xl_strformat.fitalic
-									FWRITE(lhFile, '<i/>')
-								ENDIF
-								IF xl_strformat.uline != UNDERLINE_NONE
-									FWRITE(lhFile, '<u/>')
-								ENDIF
-								IF xl_strformat.strkthr
-									FWRITE(lhFile, '<strike/>')
-								ENDIF
-								IF xl_strformat.fsize > 0
-									FWRITE(lhFile, '<sz val="' + TRANSFORM(xl_strformat.fsize) + '"/>')
-								ENDIF
-								DO CASE
-									CASE xl_strformat.fcolor > 0
-										FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_strformat.fcolor) +'"/>')
-			
-									CASE xl_strformat.indexed > 0
-										FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_strformat.indexed) + '"/>')
-			
-									CASE xl_strformat.theme > 0
-										FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_strformat.theme) +'" tint="' + TRANSFORM(xl_strformat.tint, "99.999999999999999") + '"/>')
-								ENDCASE
-								IF !EMPTY(xl_strformat.fvpos)
-									FWRITE(lhFile, '<vertAlign val="' + ALLTRIM(xl_strformat.fvpos) + '"/>')
-								ENDIF
-								IF !EMPTY(xl_strformat.fname)
-									FWRITE(lhFile, '<rFont val="' + ALLTRIM(xl_strformat.fname) + '"/>')
-								ENDIF
-								FWRITE(lhFile, '</rPr>')
+							FWRITE(lhFile, '<rPr>')
+							IF xl_strformat.fbold
+								FWRITE(lhFile, '<b/>')
 							ENDIF
-		*					IF xl_strformat.presvspace
-								FWRITE(lhFile, '<t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t>')
-		*					ELSE
-		*						FWRITE(lhFile, '<t>' + xl_strformat.stringxml + '</t>')
-		*					ENDIF
-							FWRITE(lhFile, '</r>')
-						ENDSCAN
-						FWRITE(lhFile, '</si>')
-						SELECT xl_strings
-					ELSE
-						IF xl_strings.presvspace
-							FWRITE(lhFile, '<si><t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t></si>')
-						ELSE
-							FWRITE(lhFile, '<si><t>' + xl_strings.stringxml + '</t></si>')
+							IF xl_strformat.fitalic
+								FWRITE(lhFile, '<i/>')
+							ENDIF
+							IF xl_strformat.uline != UNDERLINE_NONE
+								FWRITE(lhFile, '<u/>')
+							ENDIF
+							IF xl_strformat.strkthr
+								FWRITE(lhFile, '<strike/>')
+							ENDIF
+							IF xl_strformat.fsize > 0
+								FWRITE(lhFile, '<sz val="' + TRANSFORM(xl_strformat.fsize) + '"/>')
+							ENDIF
+							DO CASE
+								CASE xl_strformat.fcolor > 0
+									FWRITE(lhFile, '<color rgb="' + this.ConvertColorToHex(xl_strformat.fcolor) +'"/>')
+		
+								CASE xl_strformat.indexed > 0
+									FWRITE(lhFile, '<color indexed="' + TRANSFORM(xl_strformat.indexed) + '"/>')
+		
+								CASE xl_strformat.theme > 0
+									FWRITE(lhFile, '<color theme="' + TRANSFORM(xl_strformat.theme) +'" tint="' + TRANSFORM(xl_strformat.tint, "99.999999999999999") + '"/>')
+							ENDCASE
+							IF !EMPTY(xl_strformat.fvpos)
+								FWRITE(lhFile, '<vertAlign val="' + ALLTRIM(xl_strformat.fvpos) + '"/>')
+							ENDIF
+							IF !EMPTY(xl_strformat.fname)
+								FWRITE(lhFile, '<rFont val="' + ALLTRIM(xl_strformat.fname) + '"/>')
+							ENDIF
+							FWRITE(lhFile, '</rPr>')
 						ENDIF
+		*				IF xl_strformat.presvspace
+							FWRITE(lhFile, '<t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t>')
+		*				ELSE
+		*					FWRITE(lhFile, '<t>' + xl_strformat.stringxml + '</t>')
+		*				ENDIF
+						FWRITE(lhFile, '</r>')
+					ENDSCAN
+					FWRITE(lhFile, '</si>')
+					SELECT xl_strings
+				ELSE
+					IF xl_strings.presvspace
+						FWRITE(lhFile, '<si><t xml:space="preserve">' + CHRTRAN(xl_strformat.stringxml, CHR(160), CHR(32)) + '</t></si>')
+					ELSE
+						FWRITE(lhFile, '<si><t>' + xl_strings.stringxml + '</t></si>')
 					ENDIF
-				ENDSCAN
-				SET ORDER TO
-				FWRITE(lhFile, '</sst>')
-				FCLOSE(lhFile)
-				this.SaveAsUTF8(lcFileName)
-			ELSE
-		*-*		No strings are assigned to cells; remove from relationships if present
-				DELETE FROM xl_relationships WHERE workbook = tnWB AND reltype = RELS_TYPE_SHAREDSTRINGS
-			ENDIF
+				ENDIF
+			ENDSCAN
+			SET ORDER TO
+			FWRITE(lhFile, '</sst>')
+			FCLOSE(lhFile)
+			this.SaveAsUTF8(lcFileName)
 			llSuccess = True
 		
 		CATCH TO loException
