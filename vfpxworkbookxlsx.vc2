@@ -118,6 +118,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getlastcolumninrow		&& Returns the last column index in the row
 		*m: getlastrownumber		&& Returns the last row number in the sheet
 		*m: getmaxcolumnnumber		&& Returns the max column number for a sheet
+		*m: getnamedrange		&& Gets the named range
 		*m: getnextid		&& Gets the next sequential Id value
 		*m: getnodeattributevalue		&& Returns the attribute value
 		*m: getnodecount		&& Returns the number of nodes to be processed
@@ -365,6 +366,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="getgridcolumnformat" type="method" display="GetGridColumnFormat"/>
 		<memberdata name="getimagedimensions" type="method" display="GetImageDimensions"/>
 		<memberdata name="getimagerelationshipid" type="method" display="GetImageRelationshipId"/>
+		<memberdata name="getnamedrange" type="method" display="GetNamedRange"/>
 		<memberdata name="getrelationtypetext" type="method" display="GetRelationTypeText"/>
 		<memberdata name="getsheetindex" type="method" display="GetSheetIndex"/>
 		<memberdata name="getsheetprotection" type="method" display="GetSheetProtection"/>
@@ -915,11 +917,11 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		IF tnBegRow > tnEndRow .OR. tnBegCol > tnEndCol
 			RETURN ""
 		ENDIF
-		lcRangeName = CHRTRAN(ALLTRIM(tcName), " !@#$%^&*()+={}[]|<>,.'?/" + CHR(34), REPLICATE("_", 25))
+		lcRangeName = CHRTRAN(ALLTRIM(tcName), " !@#$%^&*()+={}[]|<>,.'?/" + CHR(34), REPLICATE("_", 26))
 		IF !ISALPHA(lcRangeName) .AND. !INLIST(LEFT(lcRangeName, 1), "_", "\")
 			lcRangeName = "_" + lcRangeName
 		ENDIF
-		IF SEEK(BINTOC(tnWB), "xl_workbooks", "workbook") .AND. !SEEK(BINTOC(tnWB)+PADL(lcRangeName, 254, " "), "xl_namerange", "wbrname")
+		IF SEEK(BINTOC(tnWB), "xl_workbooks", "workbook") .AND. !SEEK(BINTOC(tnWB)+PADL(lcRangeName, 50, " "), "xl_namerange", "wbrname")
 			INSERT INTO xl_namerange (workbook, sheet, rname, scope, comment, begrow, begcol, endrow, endcol) ;
 				VALUES (tnWB, tnSheet, lcRangeName, tnScope, tcComment, tnBegRow, tnBegCol, tnEndRow, tnEndCol)
 		ELSE
@@ -4155,6 +4157,27 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			lnMaxCol = 0
 		ENDIF
 		RETURN NVL(lnMaxCol, 0)
+	ENDPROC
+
+	PROCEDURE GetNamedRange		&& Gets the named range
+		LPARAMETERS tnWB, tcRangeName
+		LOCAL lcRangeName, loRange
+		loRange = CREATEOBJECT("Empty")
+		ADDPROPERTY(loRange, "BegCol", 0)
+		ADDPROPERTY(loRange, "BegRow", 0)
+		ADDPROPERTY(loRange, "EndCol", 0)
+		ADDPROPERTY(loRange, "EndRow", 0)
+		ADDPROPERTY(loRange, "SheetId", 0)
+		
+		lcRangeName = CHRTRAN(ALLTRIM(tcRangeName), " !@#$%^&*()+={}[]|<>,.'?/" + CHR(34), REPLICATE("_", 26))
+		IF SEEK(BINTOC(tnWB)+PADL(lcRangeName, 50, " "), "xl_namerange", "wbrname")
+			loRange.BegCol  = xl_namerange.begcol
+			loRange.BegRow  = xl_namerange.begrow
+			loRange.EndCol  = xl_namerange.endcol
+			loRange.EndRow  = xl_namerange.endrow
+			loRange.SheetId = xl_namerange.sheet
+		ENDIF
+		RETURN loRange
 	ENDPROC
 
 	PROTECTED PROCEDURE GetNextId		&& Gets the next sequential Id value
