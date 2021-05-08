@@ -119,6 +119,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		*m: getlastrownumber		&& Returns the last row number in the sheet
 		*m: getmaxcolumnnumber		&& Returns the max column number for a sheet
 		*m: getnamedrange		&& Gets the named range
+		*m: getnamedranges		&& Returns an object listing of all named ranges
 		*m: getnextid		&& Gets the next sequential Id value
 		*m: getnodeattributevalue		&& Returns the attribute value
 		*m: getnodecount		&& Returns the number of nodes to be processed
@@ -367,6 +368,7 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 		<memberdata name="getimagedimensions" type="method" display="GetImageDimensions"/>
 		<memberdata name="getimagerelationshipid" type="method" display="GetImageRelationshipId"/>
 		<memberdata name="getnamedrange" type="method" display="GetNamedRange"/>
+		<memberdata name="getnamedranges" type="method" display="GetNamedRanges"/>
 		<memberdata name="getrelationtypetext" type="method" display="GetRelationTypeText"/>
 		<memberdata name="getsheetindex" type="method" display="GetSheetIndex"/>
 		<memberdata name="getsheetprotection" type="method" display="GetSheetProtection"/>
@@ -4178,6 +4180,31 @@ DEFINE CLASS vfpxworkbookxlsx AS label
 			loRange.SheetId = xl_namerange.sheet
 		ENDIF
 		RETURN loRange
+	ENDPROC
+
+	PROCEDURE GetNamedRanges		&& Returns an object listing of all named ranges
+		LPARAMETERS tnWB
+		LOCAL lcRangeName, loRanges
+		loRanges = CREATEOBJECT("Empty")
+		ADDPROPERTY(loRanges, "List[1]")
+		ADDPROPERTY(loRanges, "Count", 0)
+		lnCnt = 0
+		SELECT xl_namerange
+		SCAN FOR wb = tnWB
+			lnCnt = lnCnt + 1
+			loRanges.Count = lnCnt
+			DIMENSION loRanges.List[lnCnt]
+			loRanges.List[lnCnt] = CREATEOBJECT("Empty")
+			ADDPROPERTY(loRanges.List[lnCnt], "Name",    ALLTRIM(xl_namerange.rname))
+			ADDPROPERTY(loRanges.List[lnCnt], "Comment", ALLTRIM(xl_namerange.comment))
+			ADDPROPERTY(loRanges.List[lnCnt], "Scope",   xl_namerange.scope)
+			ADDPROPERTY(loRanges.List[lnCnt], "BegCol",  xl_namerange.begcol)
+			ADDPROPERTY(loRanges.List[lnCnt], "BegRow",  xl_namerange.begrow)
+			ADDPROPERTY(loRanges.List[lnCnt], "EndCol",  xl_namerange.endcol)
+			ADDPROPERTY(loRanges.List[lnCnt], "EndRow",  xl_namerange.endrow)
+			ADDPROPERTY(loRanges.List[lnCnt], "SheetId", xl_namerange.sheet)
+		ENDSCAN
+		RETURN loRanges
 	ENDPROC
 
 	PROTECTED PROCEDURE GetNextId		&& Gets the next sequential Id value
